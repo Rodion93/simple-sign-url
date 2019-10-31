@@ -1,8 +1,31 @@
 {
-  "name": "signurl",
-  "version": "0.0.1",
-  "main": "index.js",
-  "author": "Rodion",
-  "license": "MIT",
+  "name": "simple-sign-url",
+  "version": "0.0.2",
+  "description": "Express library for signing urls and validating them.",
+  "keywords": [
+    "express",
+    "url",
+    "signature",
+    "sign",
+    "signedurl"
+  ],
+  "main": "./src/index.js",
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "http://www.opensource.org/licenses/MIT"
+    }
+  ],
+  "author": {
+    "name": "Rodion"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Rodion93/simple-sign-url.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Rodion93/simple-sign-url/issues"
+  },
+  "types": "./simple_sign_url.d.ts",
   "dependencies": {}
 }

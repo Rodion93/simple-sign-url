@@ -1,125 +1,195 @@
 import querystring from 'querystring';
-import { createHash } from './hash';
 import { HttpCodes } from './constants/httpCodes';
+import {
+  SIGNED_PARAM_LENGTH,
+  getSignedParamIndexPos,
+  createHashedKey,
+  getUrlWithoutSignedParam
+} from './utils';
 
-export default class Signature {
+const DEFAULT_ALGORITHM = 'sha512';
+const DEFAULT_TTL = 60;
+
+export default class SignUrl {
   /**
-   * @param {object} options - starting options.
+   * SignUrl constructor.
+   * @param {object} options - Starting options.
    * @param {string} options.secretKey - The secret string.
-   * @param {number} options.ttl - The default time-to-live in seconds.
-   * @param {string} options.algorithm - The hashing algorithm.
+   * @param {number} [options.ttl] - The default time-to-live in seconds.
+   * @param {string} [options.algorithm] - The hashing algorithm.
    * @constructor
    */
   constructor(options) {
     this.secretKey = options.secretKey;
-    this.ttl = options.ttl || 60;
-    this.algorithm = options.algorithm || 'sha512WithRSAEncryption';
+    this.ttl = options.ttl || DEFAULT_TTL;
+    this.algorithm = options.algorithm || DEFAULT_ALGORITHM;
 
-    this.getSignedUrl = this.getSignedUrl.bind(this);
-    this.verifyUrl = this.verifyUrl.bind(this);
-    this.verifierMiddleware = this.verifierMiddleware.bind(this);
+    this.generateSignedUrlSync = this.generateSignedUrlSync.bind(this);
+    this.generateSignedUrl = this.generateSignedUrl.bind(this);
+    this.verifySignedUrlSync = this.verifySignedUrlSync.bind(this);
+    this.verifySignedUrl = this.verifySignedUrl.bind(this);
+    this.verifierSync = this.verifierSync.bind(this);
+    this.verifier = this.verifier.bind(this);
   }
 
   /**
-   * Generates secured url
+   * Generates secured url.
    * @param {string} url - Existing url.
-   * @param {string} method - The http method.
-   * @returns {string} Signed url
+   * @param {string} httpMethod - The http method.
+   * @returns {string} Signed url.
    */
-  getSignedUrl(url, method) {
-    if (!url || !method) {
-      throw new Error('url or method is not defined');
+  generateSignedUrlSync(url, httpMethod) {
+    if (!url || !httpMethod) {
+      throw new Error('Url or httpMethod is not defined');
     }
 
     const data = {
       e: Math.floor(+new Date() / 1000) + this.ttl,
-      m: method.toUpperCase()
+      m: httpMethod.toUpperCase()
     };
 
     const parameterSymbol = url.indexOf('?') === -1 ? '?' : '&';
     const dataAsString = querystring.stringify(data, ';', ':');
     const formattedUrl = `${url}${parameterSymbol}signed=${dataAsString};`;
 
-    const hashedKey = createHash(formattedUrl, this.algorithm, this.secretKey);
+    const hashedKey = createHashedKey(
+      formattedUrl,
+      this.algorithm,
+      this.secretKey
+    );
+    const signedUrl = `${formattedUrl}${hashedKey}`;
 
-    return `${formattedUrl}${hashedKey}`;
+    return signedUrl;
+  }
+
+  /**
+   * Generates secured url.
+   * @param {string} url - Existing url.
+   * @param {string} httpMethod - The http method.
+   * @returns {Promise<string>} Promise<string>.
+   */
+  generateSignedUrl(url, httpMethod) {
+    return new Promise((resolve, reject) => {
+      try {
+        const signedUrl = this.generateSignedUrlSync(url, httpMethod);
+        resolve(signedUrl);
+      } catch (err) {
+        reject(err);
+      }
+    });
   }
 
   /**
    * Verifying URL for validity and returns result string.
-   * @param {object} req
+   * @param {Request} req - Request.
    * @returns {string} Result string.
    */
-  verifyUrl(req) {
-    if (
-      !req.originalUrl.includes('&signed=') ||
-      !req.originalUrl.includes('?signed=')
-    ) {
-      return 'invalid';
-    }
+  verifySignedUrlSync(req) {
+    const url = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
 
-    const url = `${req.protocol}://${req.host}${req.originalUrl}`;
+    const signedParamIndex = getSignedParamIndexPos(url);
+
+    const dataAsString = url.substring(
+      signedParamIndex + SIGNED_PARAM_LENGTH,
+      lastSeparatorIndex
+    );
+    const data = querystring.parse(dataAsString, ';', ':');
 
     const lastSeparatorIndex = url.lastIndexOf(';');
-    const signature = url.substring(lastSeparatorIndex);
+    const urlSignature = url.substring(lastSeparatorIndex);
     const urlWithoutSign = url.substr(0, lastSeparatorIndex);
 
-    const hashedUrl = createHash(
+    const hashedKey = createHashedKey(
       urlWithoutSign,
       this.algorithm,
       this.secretKey
     );
 
-    if (hashedUrl !== signature) {
+    if (hashedKey !== urlSignature) {
       return 'invalid';
     }
 
-    let lastAmpPos = url.lastIndexOf('&signed=');
-    if (lastAmpPos === -1) {
-      lastAmpPos = url.lastIndexOf('?signed=');
-    }
-
-    const dataAsString = url.substring(lastAmpPos + 8, lastSeparatorIndex);
-    const data = querystring.parse(dataAsString, ';', ':');
-
-    if (data.m && data.m === req.method) {
+    if (data.m && data.m !== req.method) {
       return 'invalid';
     }
     if (data.e && data.e < Math.ceil(+new Date() / 1000)) {
       return 'expired';
     }
 
-    req.url = url.substr(0, lastAmpPos);
-
     return 'valid';
   }
 
   /**
+   * Verifying URL for validity and returns result string.
+   * @param {Request} req - Request.
+   * @returns {Promise<string>} Promise<string>.
+   */
+  verifySignedUrl(req) {
+    return new Promise((resolve, reject) => {
+      try {
+        const validationResult = this.verifySignedUrlSync(req);
+        resolve(validationResult);
+      } catch (err) {
+        reject(err);
+      }
+    });
+  }
+
+  /**
    * Returns express middleware
-   * @param {object} [options] - Includes functions - onInvalid, onExpired.
-   * @param {Function} options.onInvalid - Function that emits when the signature is invalid.
-   * @param {Function} options.onExpired - Function that emits when the signature is expired.
+   * @param {Function} [onInvalid] - Function that emits when the signature is invalid.
+   * @param {Function} [onExpired] - Function that emits when the signature is expired.
    * @returns {Function} Express middleware.
    */
-  verifierMiddleware(options) {
-    const self = this;
-    options = options || {};
+  verifierSync(onInvalid, onExpired) {
     const errorFunctions = {
       invalid:
-        options.onInvalid ||
+        onInvalid ||
         function(res) {
           res.send(HttpCodes.FORBIDDEN);
         },
       expired:
-        options.onExpired ||
+        onExpired ||
         function(res) {
           res.send(HttpCodes.EXPIRED);
         }
     };
 
-    return function(req, res, next) {
-      const result = self.verifyUrl(req);
+    return (req, res, next) => {
+      const result = this.verifySignedUrlSync(req);
       if (result === 'valid') {
+        req.url = getUrlWithoutSignedParam(req.url);
+        next();
+      } else {
+        errorFunctions[result](res);
+      }
+    };
+  }
+
+  /**
+   * Returns express async middleware
+   * @param {Function} [onInvalid] - Function that emits when the signature is invalid.
+   * @param {Function} [onExpired] - Function that emits when the signature is expired.
+   * @returns {Promise<Function>} Express async middleware.
+   */
+  verifier(onInvalid, onExpired) {
+    const errorFunctions = {
+      invalid:
+        onInvalid ||
+        function(res) {
+          res.send(HttpCodes.FORBIDDEN);
+        },
+      expired:
+        onExpired ||
+        function(res) {
+          res.send(HttpCodes.EXPIRED);
+        }
+    };
+
+    return async (req, res, next) => {
+      const result = await this.verifySignedUrl(req);
+      if (result === 'valid') {
+        req.url = getUrlWithoutSignedParam(req.url);
         next();
       } else {
         errorFunctions[result](res);
