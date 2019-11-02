@@ -35,7 +35,11 @@ module.exports = class SignUrl {
    */
   generateSignedUrlSync(url, httpMethod) {
     if (!url || !httpMethod) {
-      throw new Error('Url or httpMethod is not defined');
+      throw new Error('URL or httpMethod is not defined');
+    }
+
+    if (url.endsWith('/')) {
+      throw new Error('URL must not end with "/"');
     }
 
     const data = {
@@ -85,16 +89,16 @@ module.exports = class SignUrl {
 
     const signedParamIndex = utils.getSignedParamIndexPos(url);
 
-    const lastSeparatorIndex = url.lastIndexOf(';');
+    const signatureIndex = url.lastIndexOf(';') + 1;
 
     const dataAsString = url.substring(
       signedParamIndex + utils.SIGNED_PARAM_LENGTH,
-      lastSeparatorIndex
+      signatureIndex
     );
     const data = querystring.parse(dataAsString, ';', ':');
 
-    const urlSignature = url.substring(lastSeparatorIndex);
-    const urlWithoutSign = url.substr(0, lastSeparatorIndex);
+    const urlSignature = url.substring(signatureIndex);
+    const urlWithoutSign = url.substr(0, signatureIndex);
 
     const hashedKey = utils.createHashedKey(
       urlWithoutSign,
