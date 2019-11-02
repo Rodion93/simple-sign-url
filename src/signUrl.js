@@ -1,16 +1,11 @@
-import querystring from 'querystring';
-import { HttpCodes } from './constants/httpCodes';
-import {
-  SIGNED_PARAM_LENGTH,
-  getSignedParamIndexPos,
-  createHashedKey,
-  getUrlWithoutSignedParam
-} from './utils';
+const querystring = require('querystring');
+const httpCodes = require('./constants/httpCodes');
+const utils = require('./utils');
 
 const DEFAULT_ALGORITHM = 'sha512';
 const DEFAULT_TTL = 60;
 
-export default class SignUrl {
+module.exports = class SignUrl {
   /**
    * SignUrl constructor.
    * @param {object} options - Starting options.
@@ -44,15 +39,16 @@ export default class SignUrl {
     }
 
     const data = {
-      e: Math.floor(+new Date() / 1000) + this.ttl,
-      m: httpMethod.toUpperCase()
+      e: utils.generateExpiredParam(this.ttl),
+      m: httpMethod.toUpperCase(),
+      r: utils.generateRandomParam()
     };
 
     const parameterSymbol = url.indexOf('?') === -1 ? '?' : '&';
     const dataAsString = querystring.stringify(data, ';', ':');
     const formattedUrl = `${url}${parameterSymbol}signed=${dataAsString};`;
 
-    const hashedKey = createHashedKey(
+    const hashedKey = utils.createHashedKey(
       formattedUrl,
       this.algorithm,
       this.secretKey
@@ -87,19 +83,20 @@ export default class SignUrl {
   verifySignedUrlSync(req) {
     const url = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
 
-    const signedParamIndex = getSignedParamIndexPos(url);
+    const signedParamIndex = utils.getSignedParamIndexPos(url);
+
+    const lastSeparatorIndex = url.lastIndexOf(';');
 
     const dataAsString = url.substring(
-      signedParamIndex + SIGNED_PARAM_LENGTH,
+      signedParamIndex + utils.SIGNED_PARAM_LENGTH,
       lastSeparatorIndex
     );
     const data = querystring.parse(dataAsString, ';', ':');
 
-    const lastSeparatorIndex = url.lastIndexOf(';');
     const urlSignature = url.substring(lastSeparatorIndex);
     const urlWithoutSign = url.substr(0, lastSeparatorIndex);
 
-    const hashedKey = createHashedKey(
+    const hashedKey = utils.createHashedKey(
       urlWithoutSign,
       this.algorithm,
       this.secretKey
@@ -112,7 +109,7 @@ export default class SignUrl {
     if (data.m && data.m !== req.method) {
       return 'invalid';
     }
-    if (data.e && data.e < Math.ceil(+new Date() / 1000)) {
+    if (data.e && data.e < utils.getCurrentDateInSeconds()) {
       return 'expired';
     }
 
@@ -146,19 +143,19 @@ export default class SignUrl {
       invalid:
         onInvalid ||
         function(res) {
-          res.send(HttpCodes.FORBIDDEN);
+          res.send(httpCodes.FORBIDDEN);
         },
       expired:
         onExpired ||
         function(res) {
-          res.send(HttpCodes.EXPIRED);
+          res.send(httpCodes.EXPIRED);
         }
     };
 
     return (req, res, next) => {
       const result = this.verifySignedUrlSync(req);
       if (result === 'valid') {
-        req.url = getUrlWithoutSignedParam(req.url);
+        req.url = utils.getUrlWithoutSignedParam(req.url);
         next();
       } else {
         errorFunctions[result](res);
@@ -177,23 +174,23 @@ export default class SignUrl {
       invalid:
         onInvalid ||
         function(res) {
-          res.send(HttpCodes.FORBIDDEN);
+          res.send(httpCodes.FORBIDDEN);
         },
       expired:
         onExpired ||
         function(res) {
-          res.send(HttpCodes.EXPIRED);
+          res.send(httpCodes.EXPIRED);
         }
     };
 
     return async (req, res, next) => {
       const result = await this.verifySignedUrl(req);
       if (result === 'valid') {
-        req.url = getUrlWithoutSignedParam(req.url);
+        req.url = utils.getUrlWithoutSignedParam(req.url);
         next();
       } else {
         errorFunctions[result](res);
       }
     };
   }
-}
+};
