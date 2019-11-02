@@ -74,7 +74,7 @@ function getCurrentDateInSeconds() {
   return Math.ceil(+new Date() / ONE_SECOND_VALUE);
 }
 
-exports.getDateInSeconds = getDateInSeconds;
+exports.getCurrentDateInSeconds = getCurrentDateInSeconds;
 
 /**
  * Generates the 'expired' parameter.
