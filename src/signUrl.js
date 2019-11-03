@@ -147,12 +147,12 @@ module.exports = class SignUrl {
       invalid:
         onInvalid ||
         function(res) {
-          res.send(httpCodes.FORBIDDEN);
+          res.sendStatus(httpCodes.FORBIDDEN);
         },
       expired:
         onExpired ||
         function(res) {
-          res.send(httpCodes.EXPIRED);
+          res.sendStatus(httpCodes.EXPIRED);
         }
     };
 
@@ -178,12 +178,12 @@ module.exports = class SignUrl {
       invalid:
         onInvalid ||
         function(res) {
-          res.send(httpCodes.FORBIDDEN);
+          res.sendStatus(httpCodes.FORBIDDEN);
         },
       expired:
         onExpired ||
         function(res) {
-          res.send(httpCodes.EXPIRED);
+          res.sendStatus(httpCodes.EXPIRED);
         }
     };
 
