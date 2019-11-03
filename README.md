@@ -79,8 +79,10 @@ app.get('/', async (req, res, next) => {
   const signedUrl = await signUrl.generateSignedUrl(url, httpMethod);
   
   res.send(signedUrl);
-  // Returns something like 
+  /*
+    Returns something like 
       http://localhost:8080/source/a?signed=e:12343254;m:GET;r:1422553972;e8d071f5ae64338e3d3ac8ff0bcc583bd1d1dsa
+  */
 });
 
 // Validating
