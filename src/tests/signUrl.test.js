@@ -35,24 +35,29 @@ describe('Main tests', () => {
     });
 
     app = express();
-    app.get('/try', signUrl.verifierSync(), (_, res) => {
+    app.get('/try', signUrl.verifier(), (_, res) => {
       res.send('ok');
     });
 
     const customRoute = express.Router();
 
-    customRoute.get('/try', signUrl.verifierSync(), (_, res) => res.send('ok'));
+    customRoute.get('/try', signUrl.verifier(), (_, res) => res.send('ok'));
 
     app.use('/customRoute', customRoute);
 
     server = app.listen(TEST_PORT);
+
+    app.use(async (err, req, res, next) => {
+      res.status(err.status);
+      res.send(err.message);
+    });
   });
 
   afterAll(() => {
     server.close();
   });
 
-  test('should get OK', async () => {
+  it('should get OK', async () => {
     const url = `http://localhost:${TEST_PORT}/try`;
 
     const signedUrl = await signUrl.generateSignedUrl(url, HTTP_METHOD);
@@ -60,7 +65,7 @@ describe('Main tests', () => {
     await makeRequest(signedUrl);
   });
 
-  test('should get OK (with custom route)', async () => {
+  it('should get OK (with custom route)', async () => {
     const url = `http://localhost:${TEST_PORT}/customRoute/try`;
 
     const signedUrl = await signUrl.generateSignedUrl(url, HTTP_METHOD);
@@ -68,7 +73,7 @@ describe('Main tests', () => {
     await makeRequest(signedUrl);
   });
 
-  test('should return 403 when token is not valid', async () => {
+  it('should return 403 when token is not valid', async () => {
     const url = `http://localhost:${TEST_PORT}/try`;
 
     const signedUrl = await signUrl.generateSignedUrl(url, HTTP_METHOD);
@@ -76,7 +81,7 @@ describe('Main tests', () => {
     await makeRequest(signedUrl + '1', { expectedCode: 403 });
   });
 
-  test('should return 410 when token expired', async () => {
+  it('should return 410 when token expired', async () => {
     const url = `http://localhost:${TEST_PORT}/try`;
 
     const signedUrl = await signUrl.generateSignedUrl(url, HTTP_METHOD);

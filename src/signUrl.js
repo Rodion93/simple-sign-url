@@ -1,6 +1,7 @@
 const querystring = require('querystring');
-const httpCodes = require('./constants/httpCodes');
 const utils = require('./utils');
+const HttpError = require('./httpError');
+const httpCodes = require('./constants/httpCodes');
 
 const DEFAULT_ALGORITHM = 'sha512';
 const DEFAULT_TTL = 60;
@@ -35,11 +36,14 @@ module.exports = class SignUrl {
    */
   generateSignedUrlSync(url, httpMethod) {
     if (!url || !httpMethod) {
-      throw new Error('URL or httpMethod is not defined');
+      throw new HttpError(
+        httpCodes.BAD_REQUEST,
+        'URL or httpMethod is not defined'
+      );
     }
 
     if (url.endsWith('/')) {
-      throw new Error('URL must not end with "/"');
+      throw new HttpError(httpCodes.BAD_REQUEST, 'URL must not end with "/"');
     }
 
     const data = {
@@ -144,16 +148,8 @@ module.exports = class SignUrl {
    */
   verifierSync(onInvalid, onExpired) {
     const errorFunctions = {
-      invalid:
-        onInvalid ||
-        function(res) {
-          res.sendStatus(httpCodes.FORBIDDEN);
-        },
-      expired:
-        onExpired ||
-        function(res) {
-          res.sendStatus(httpCodes.EXPIRED);
-        }
+      invalid: onInvalid || onInvalidDefault,
+      expired: onExpired || onExpiredDefault
     };
 
     return (req, res, next) => {
@@ -162,7 +158,7 @@ module.exports = class SignUrl {
         req.url = utils.getUrlWithoutSignedParam(req.url);
         next();
       } else {
-        errorFunctions[result](res);
+        errorFunctions[result](next);
       }
     };
   }
@@ -175,16 +171,8 @@ module.exports = class SignUrl {
    */
   verifier(onInvalid, onExpired) {
     const errorFunctions = {
-      invalid:
-        onInvalid ||
-        function(res) {
-          res.sendStatus(httpCodes.FORBIDDEN);
-        },
-      expired:
-        onExpired ||
-        function(res) {
-          res.sendStatus(httpCodes.EXPIRED);
-        }
+      invalid: onInvalid || onInvalidDefault,
+      expired: onExpired || onExpiredDefault
     };
 
     return async (req, res, next) => {
@@ -193,8 +181,27 @@ module.exports = class SignUrl {
         req.url = utils.getUrlWithoutSignedParam(req.url);
         next();
       } else {
-        errorFunctions[result](res);
+        errorFunctions[result](next);
       }
     };
   }
 };
+
+/**
+ * Default function when token is not valid
+ * @param {Function} next - Next function in express app(error handler for example).
+ */
+function onInvalidDefault(next) {
+  // console.log(next);
+  const error = new HttpError(httpCodes.FORBIDDEN, 'Url signature is invalid');
+  next(error);
+}
+
+/**
+ * Default function when token expired
+ * @param {Function} next - Next function in express app(error handler for example).
+ */
+function onExpiredDefault(next) {
+  const error = new HttpError(httpCodes.EXPIRED, 'Signed URL expired');
+  next(error);
+}

@@ -1,8 +1,8 @@
 const crypto = require('crypto');
+const HttpError = require('./httpError');
+const httpCodes = require('./constants/httpCodes');
 
 const SIGNED_PARAM = 'signed=';
-
-exports.SIGNED_PARAM_LENGTH = SIGNED_PARAM.length + 1;
 
 const ITERATION_COUNT = 10000;
 const HASH_LENGTH = 32;
@@ -11,6 +11,15 @@ const DIGEST = 'hex';
 const ONE_SECOND_VALUE = 1000;
 const MAX_RANDOM_VALUE = 10000000000;
 
+exports.SIGNED_PARAM_LENGTH = SIGNED_PARAM.length + 1;
+
+exports.createHashedKey = createHashedKey;
+exports.getSignedParamIndexPos = getSignedParamIndexPos;
+exports.getUrlWithoutSignedParam = getUrlWithoutSignedParam;
+exports.generateRandomParam = generateRandomParam;
+exports.getCurrentDateInSeconds = getCurrentDateInSeconds;
+exports.generateExpiredParam = generateExpiredParam;
+
 /**
  * Create a hashed key with secretKey from the string
  * @param {string} stringToHash - The string that will be hashed.
@@ -18,7 +27,7 @@ const MAX_RANDOM_VALUE = 10000000000;
  * @param {string} secretKey - Secret string.
  * @returns {string} Ready hashed key.
  */
-exports.createHashedKey = function(stringToHash, algorithm, secretKey) {
+function createHashedKey(stringToHash, algorithm, secretKey) {
   const hashedKey = crypto.pbkdf2Sync(
     stringToHash,
     secretKey,
@@ -27,7 +36,7 @@ exports.createHashedKey = function(stringToHash, algorithm, secretKey) {
     algorithm
   );
   return hashedKey.toString(DIGEST);
-};
+}
 
 /**
  * Get 'signed' parameter position.
@@ -40,31 +49,32 @@ function getSignedParamIndexPos(url) {
     signedParamPos = url.lastIndexOf(`?${SIGNED_PARAM}`);
   }
   if (signedParamPos === -1) {
-    throw new Error('Signed parameter is not defined');
+    throw new HttpError(
+      httpCodes.BAD_REQUEST,
+      'Signed parameter is not defined'
+    );
   }
 
   return signedParamPos;
 }
-
-exports.getSignedParamIndexPos = getSignedParamIndexPos;
 
 /**
  * Get url without 'signed' parameter.
  * @param {string} url - Existing url.
  * @returns {string} Formatted url without 'signed' parameter.
  */
-exports.getUrlWithoutSignedParam = function(url) {
+function getUrlWithoutSignedParam(url) {
   const signedParamPos = getSignedParamIndexPos(url);
   return url.substr(0, signedParamPos - 1);
-};
+}
 
 /**
  * Generates the 'random' parameter.
  * @returns {number} Random number.
  */
-exports.generateRandomParam = function() {
+function generateRandomParam() {
   return Math.floor(Math.random() * MAX_RANDOM_VALUE);
-};
+}
 
 /**
  * Get current date in seconds format.
@@ -74,13 +84,11 @@ function getCurrentDateInSeconds() {
   return Math.ceil(+new Date() / ONE_SECOND_VALUE);
 }
 
-exports.getCurrentDateInSeconds = getCurrentDateInSeconds;
-
 /**
  * Generates the 'expired' parameter.
  * @param {number} ttl - Time to live in seconds.
  * @returns {number} Expired date as number.
  */
-exports.generateExpiredParam = function(ttl) {
+function generateExpiredParam(ttl) {
   return getCurrentDateInSeconds() + ttl;
-};
+}

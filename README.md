@@ -1,6 +1,8 @@
 Simple-Sign-Url
 ======
 
+[![Build Status](https://travis-ci.org/Rodion93/simple-sign-url.svg?branch=master)](https://travis-ci.org/Rodion93/simple-sign-url) [![npm version](https://badge.fury.io/js/simple-sign-url.svg)](https://badge.fury.io/js/simple-sign-url)
+
 Simple-Sign-Url is a little node.js/express library for signing urls and validating them based on secret key.
 
 Init
