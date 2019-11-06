@@ -1,33 +1,40 @@
 const SignUrl = require('../signUrl');
 const express = require('express');
 const request = require('request');
+const httpCodes = require('../constants/httpCodes');
 
-function makeRequest(path, { expectedCode = 200 } = {}) {
+const HTTP_GET_METHOD = 'get';
+const HTTP_POST_METHOD = 'post';
+const TEST_PORT = 33001;
+
+function makeRequest(path, expectedCode = 200, httpMethod = HTTP_GET_METHOD) {
   return new Promise((resolve, reject) => {
-    request(path, (err, response, body) => {
-      if (err) {
-        reject(err);
-        return;
+    request(
+      path,
+      {
+        method: httpMethod
+      },
+      (err, response, body) => {
+        if (err) {
+          reject(err);
+        } else if (response.statusCode != expectedCode) {
+          err = new Error(`Wrong status code: ${response.statusCode}`);
+          err.statusCode = response.statusCode;
+          reject(err);
+        } else {
+          resolve(body);
+        }
       }
-      if (response.statusCode != expectedCode) {
-        err = new Error(`Wrong status code: ${response.statusCode}`);
-        err.statusCode = response.statusCode;
-        reject(err);
-        return;
-      }
-      resolve(body);
-    });
+    );
   });
 }
 
-describe('Main tests', () => {
+describe('SignUrl tests', () => {
   let signUrl;
   let app;
   let server;
-  const HTTP_METHOD = 'get';
-  const TEST_PORT = 33001;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     signUrl = new SignUrl({
       secretKey: 'secretTest',
       ttl: 2,
@@ -36,6 +43,12 @@ describe('Main tests', () => {
 
     app = express();
     app.get('/try', signUrl.verifier(), (_, res) => {
+      res.send('ok');
+    });
+    app.post('/try', signUrl.verifier(), (_, res) => {
+      res.send('ok');
+    });
+    app.get('/trySync', signUrl.verifierSync(), (_, res) => {
       res.send('ok');
     });
 
@@ -53,41 +66,117 @@ describe('Main tests', () => {
     });
   });
 
-  afterAll(() => {
+  afterAll(async () => {
     server.close();
   });
 
-  it('should get OK', async () => {
-    const url = `http://localhost:${TEST_PORT}/try`;
+  describe('Ok tests', () => {
+    it('should create signUrl with default params', async () => {
+      const sign = new SignUrl({
+        secretKey: 'secr'
+      });
 
-    const signedUrl = await signUrl.generateSignedUrl(url, HTTP_METHOD);
+      expect(sign).toBeTruthy();
+    });
 
-    await makeRequest(signedUrl);
+    it('should get OK', async () => {
+      const url = `http://localhost:${TEST_PORT}/try`;
+
+      const signedUrl = await signUrl.generateSignedUrl(url, HTTP_GET_METHOD);
+
+      await makeRequest(signedUrl);
+    });
+
+    it('should get OK (Sync)', async () => {
+      const url = `http://localhost:${TEST_PORT}/trySync`;
+
+      const signedUrl = signUrl.generateSignedUrlSync(url, HTTP_GET_METHOD);
+
+      await makeRequest(signedUrl);
+    })
+
+    it('should get OK (with custom route)', async () => {
+      const url = `http://localhost:${TEST_PORT}/customRoute/try`;
+
+      const signedUrl = await signUrl.generateSignedUrl(url, HTTP_GET_METHOD);
+
+      await makeRequest(signedUrl);
+    });
+
+    it('should get OK (with additional parameter)', async () => {
+      const url = `http://localhost:${TEST_PORT}/try?bbub=sdfsd`;
+
+      const signedUrl = await signUrl.generateSignedUrl(url, HTTP_GET_METHOD);
+
+      await makeRequest(signedUrl);
+    });
   });
 
-  it('should get OK (with custom route)', async () => {
-    const url = `http://localhost:${TEST_PORT}/customRoute/try`;
+  describe('Error tests', () => {
+    it('should throw error when "url" param is not defined', async () => {
+      expect.assertions(2);
 
-    const signedUrl = await signUrl.generateSignedUrl(url, HTTP_METHOD);
+      try {
+        await signUrl.generateSignedUrl(undefined, HTTP_GET_METHOD);
+      } catch (err) {
+        expect(err.status).toEqual(httpCodes.BAD_REQUEST);
+        expect(err.message).toEqual('URL or httpMethod is not defined');
+      }
+    });
 
-    await makeRequest(signedUrl);
-  });
+    it('should throw error when "httpMethod" param is not defined', async () => {
+      expect.assertions(2);
 
-  it('should return 403 when token is not valid', async () => {
-    const url = `http://localhost:${TEST_PORT}/try`;
+      try {
+        await signUrl.generateSignedUrl('test', undefined);
+      } catch (err) {
+        expect(err.status).toEqual(httpCodes.BAD_REQUEST);
+        expect(err.message).toEqual('URL or httpMethod is not defined');
+      }
+    });
 
-    const signedUrl = await signUrl.generateSignedUrl(url, HTTP_METHOD);
+    it('should throw error when "url" param ends with "/"', async () => {
+      expect.assertions(2);
+      const url = `http://localhost:${TEST_PORT}/try/`;
 
-    await makeRequest(signedUrl + '1', { expectedCode: 403 });
-  });
+      try {
+        await signUrl.generateSignedUrl(url, HTTP_GET_METHOD);
+      } catch (err) {
+        expect(err.status).toEqual(httpCodes.BAD_REQUEST);
+        expect(err.message).toEqual('URL must not end with /');
+      }
+    });
 
-  it('should return 410 when token expired', async () => {
-    const url = `http://localhost:${TEST_PORT}/try`;
+    it('should throw error when "signed" parameter is not defined', async () => {
+      const url = `http://localhost:${TEST_PORT}/try/`;
 
-    const signedUrl = await signUrl.generateSignedUrl(url, HTTP_METHOD);
+      await makeRequest(url, httpCodes.BAD_REQUEST);
+    });
 
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    it('should return 403 when token is not valid', async () => {
+      const url = `http://localhost:${TEST_PORT}/try`;
 
-    await makeRequest(signedUrl, { expectedCode: 410 });
+      const signedUrl = await signUrl.generateSignedUrl(url, HTTP_GET_METHOD);
+
+      await makeRequest(signedUrl + '1', httpCodes.FORBIDDEN);
+    });
+
+    it('should return 403 when httpMethod is different', async () => {
+      const url = `http://localhost:${TEST_PORT}/try`;
+
+      const signedUrl = await signUrl.generateSignedUrl(url, HTTP_GET_METHOD);
+
+      await makeRequest(signedUrl, httpCodes.FORBIDDEN, HTTP_POST_METHOD);
+    });
+
+    it('should return 410 when token expired', async () => {
+      const url = `http://localhost:${TEST_PORT}/try`;
+
+      const signedUrl = await signUrl.generateSignedUrl(url, HTTP_GET_METHOD);
+
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      await makeRequest(signedUrl, httpCodes.EXPIRED);
+    });
   });
 });

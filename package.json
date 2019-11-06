@@ -1,6 +1,6 @@
 {
   "name": "simple-sign-url",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Express library for signing urls and validating them.",
   "keywords": [
     "express",
@@ -38,6 +38,7 @@
     "src/"
   ],
   "devDependencies": {
+    "coveralls": "^3.0.7",
     "express": "^4.17.1",
     "jest": "^24.9.0"
   }

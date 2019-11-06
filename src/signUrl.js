@@ -30,7 +30,7 @@ module.exports = class SignUrl {
 
   /**
    * Generates secured url.
-   * @param {string} url - Existing url.
+   * @param {string} url - Existing url(full address).
    * @param {string} httpMethod - The http method.
    * @returns {string} Signed url.
    */
@@ -43,7 +43,7 @@ module.exports = class SignUrl {
     }
 
     if (url.endsWith('/')) {
-      throw new HttpError(httpCodes.BAD_REQUEST, 'URL must not end with "/"');
+      throw new HttpError(httpCodes.BAD_REQUEST, 'URL must not end with /');
     }
 
     const data = {
@@ -68,19 +68,13 @@ module.exports = class SignUrl {
 
   /**
    * Generates secured url.
-   * @param {string} url - Existing url.
+   * @param {string} url - Existing url(full address).
    * @param {string} httpMethod - The http method.
    * @returns {Promise<string>} Promise<string>.
    */
-  generateSignedUrl(url, httpMethod) {
-    return new Promise((resolve, reject) => {
-      try {
-        const signedUrl = this.generateSignedUrlSync(url, httpMethod);
-        resolve(signedUrl);
-      } catch (err) {
-        reject(err);
-      }
-    });
+  async generateSignedUrl(url, httpMethod) {
+    const signedUrl = this.generateSignedUrlSync(url, httpMethod);
+    return signedUrl;
   }
 
   /**
@@ -120,8 +114,6 @@ module.exports = class SignUrl {
     if (data.e && data.e < utils.getCurrentDateInSeconds()) {
       return 'expired';
     }
-
-    return 'valid';
   }
 
   /**
@@ -129,15 +121,9 @@ module.exports = class SignUrl {
    * @param {Request} req - Request.
    * @returns {Promise<string>} Promise<string>.
    */
-  verifySignedUrl(req) {
-    return new Promise((resolve, reject) => {
-      try {
-        const validationResult = this.verifySignedUrlSync(req);
-        resolve(validationResult);
-      } catch (err) {
-        reject(err);
-      }
-    });
+  async verifySignedUrl(req) {
+    const validationResult = this.verifySignedUrlSync(req);
+    return validationResult;
   }
 
   /**
@@ -153,13 +139,17 @@ module.exports = class SignUrl {
     };
 
     return (req, res, next) => {
-      const result = this.verifySignedUrlSync(req);
-      if (result === 'valid') {
+      try {
+        const errorFunc = this.verifySignedUrlSync(req);
+        if (errorFunc) {
+          errorFunctions[errorFunc](next);
+          return;
+        }
         req.url = utils.getUrlWithoutSignedParam(req.url);
-        next();
-      } else {
-        errorFunctions[result](next);
+      } catch (err) {
+        next(err);
       }
+      next();
     };
   }
 
@@ -176,13 +166,17 @@ module.exports = class SignUrl {
     };
 
     return async (req, res, next) => {
-      const result = await this.verifySignedUrl(req);
-      if (result === 'valid') {
+      try {
+        const errorFunc = await this.verifySignedUrl(req);
+        if (errorFunc) {
+          errorFunctions[errorFunc](next);
+          return;
+        }
         req.url = utils.getUrlWithoutSignedParam(req.url);
-        next();
-      } else {
-        errorFunctions[result](next);
+      } catch (err) {
+        next(err);
       }
+      next();
     };
   }
 };
@@ -192,7 +186,6 @@ module.exports = class SignUrl {
  * @param {Function} next - Next function in express app(error handler for example).
  */
 function onInvalidDefault(next) {
-  // console.log(next);
   const error = new HttpError(httpCodes.FORBIDDEN, 'Url signature is invalid');
   next(error);
 }
