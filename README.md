@@ -5,6 +5,8 @@ Simple-Sign-Url
 
 Simple-Sign-Url is a little node.js/express library for signing urls and validating them based on secret key.
 
+**NOTE** You need a Node 10.17.0 and higher.
+
 Init
 ===========
 
@@ -36,24 +38,11 @@ Generate signed url
 const url = 'http://example.com/resource';
 const httpMethod = 'get';
 
-const signedUrl = signUrl.generateSignedUrlSync(url, httpMethod);
-```
-or async version
-```javascript
-const url = 'http://example.com/resource';
-const httpMethod = 'get';
-
-const signedUrl = await signUrl.generateSignedUrl(url, httpMethod);
+const signedUrl = signUrl.generateSignedUrl(url, httpMethod);
 ```
 
 Verify url on resource side
 
-```javascript
-app.get('/resource', signUrl.verifierSync(), (req, res, next) => {
-  res.send('ok');
-});
-```
-or async version
 ```javascript
 app.get('/resource', signUrl.verifier(), (req, res, next) => {
   res.send('ok');
@@ -74,11 +63,11 @@ const signUrl = new SignUrl({
 const app = express();
 
 // Index with signed link
-app.get('/', async (req, res, next) => {
+app.get('/', (req, res, next) => {
   const url = 'http://localhost:8080/source/a';
   const httpMethod = 'get';
 
-  const signedUrl = await signUrl.generateSignedUrl(url, httpMethod);
+  const signedUrl = signUrl.generateSignedUrl(url, httpMethod);
   
   res.send(signedUrl);
   /*
@@ -88,7 +77,7 @@ app.get('/', async (req, res, next) => {
 });
 
 // Validating
-app.get('/source/:a', signUrl.verifierSync(), (req, res, next) => {
+app.get('/source/:a', signUrl.verifier(), (req, res, next) => {
   res.send(req.params.a);
 });
 
