@@ -39,6 +39,7 @@
     "index.js",
     "src/"
   ],
+  "dependencies": {},
   "devDependencies": {
     "coveralls": "^3.0.7",
     "express": "^4.17.1",
