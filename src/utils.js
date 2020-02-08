@@ -1,17 +1,8 @@
 const crypto = require('crypto');
 const HttpError = require('./httpError');
-const httpCodes = require('./constants/httpCodes');
-
-const SIGNED_PARAM = 'signed=';
-
-const ITERATION_COUNT = 10000;
-const HASH_LENGTH = 32;
-const DIGEST = 'hex';
-
-const ONE_SECOND_VALUE = 1000;
-const MAX_RANDOM_VALUE = 10000000000;
-
-exports.SIGNED_PARAM_LENGTH = SIGNED_PARAM.length + 1;
+const httpCodes = require('./constants/httpCodes.constant');
+const errorMessages = require('./constants/errorMessages.constant');
+const defaultValues = require('./constants/defaultValues.constant');
 
 exports.createHashedKey = createHashedKey;
 exports.getSignedParamIndexPos = getSignedParamIndexPos;
@@ -31,11 +22,12 @@ function createHashedKey(stringToHash, algorithm, secretKey) {
   const hashedKey = crypto.pbkdf2Sync(
     stringToHash,
     secretKey,
-    ITERATION_COUNT,
-    HASH_LENGTH,
+    defaultValues.ITERATION_COUNT,
+    defaultValues.HASH_LENGTH,
     algorithm
   );
-  return hashedKey.toString(DIGEST);
+
+  return hashedKey.toString(defaultValues.DIGEST_VALUE);
 }
 
 /**
@@ -44,14 +36,15 @@ function createHashedKey(stringToHash, algorithm, secretKey) {
  * @returns {number} Index of starting 'signed' parameter.
  */
 function getSignedParamIndexPos(url) {
-  let signedParamPos = url.lastIndexOf(`&${SIGNED_PARAM}`);
+  let signedParamPos = url.lastIndexOf(`&${defaultValues.SIGNED_PARAM}`);
+
   if (signedParamPos === -1) {
-    signedParamPos = url.lastIndexOf(`?${SIGNED_PARAM}`);
+    signedParamPos = url.lastIndexOf(`?${defaultValues.SIGNED_PARAM}`);
   }
   if (signedParamPos === -1) {
     throw new HttpError(
       httpCodes.BAD_REQUEST,
-      'Signed parameter is not defined'
+      errorMessages.SIGNED_PARAM_UNDEFINED
     );
   }
 
@@ -73,7 +66,7 @@ function getUrlWithoutSignedParam(url) {
  * @returns {number} Random number.
  */
 function generateRandomParam() {
-  return Math.floor(Math.random() * MAX_RANDOM_VALUE);
+  return Math.floor(Math.random() * defaultValues.MAX_RANDOM_VALUE);
 }
 
 /**
@@ -81,7 +74,7 @@ function generateRandomParam() {
  * @returns {number} Current date in seconds.
  */
 function getCurrentDateInSeconds() {
-  return Math.ceil(+new Date() / ONE_SECOND_VALUE);
+  return Math.ceil(+new Date() / defaultValues.ONE_SECOND_VALUE);
 }
 
 /**
