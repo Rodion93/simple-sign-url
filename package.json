@@ -10,7 +10,9 @@
     "sign",
     "signedurl",
     "javascript",
-    "js"
+    "js",
+    "typescript",
+    "ts"
   ],
   "licenses": [
     {
@@ -37,6 +39,7 @@
   "files": [
     "README.md",
     "index.js",
+    "index.d.ts",
     "src/"
   ],
   "dependencies": {},

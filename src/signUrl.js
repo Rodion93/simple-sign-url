@@ -72,7 +72,7 @@ module.exports = class SignUrl {
   }
 
   /**
-   * Verifying URL for validity and returns result code.
+   * Verifying URL for validity and returns result code (0 is valid).
    * @param {Request} req - Request.
    * @returns {number} Result code.
    */
@@ -144,9 +144,6 @@ module.exports = class SignUrl {
   }
 };
 
-/**
- * Default function when token is not valid
- */
 function onInvalidDefault() {
   throw new HttpError(
     httpCodes.FORBIDDEN,
@@ -154,9 +151,6 @@ function onInvalidDefault() {
   );
 }
 
-/**
- * Default function when token expired
- */
 function onExpiredDefault() {
   throw new HttpError(httpCodes.EXPIRED, errorMessages.SIGNED_URL_EXPIRED);
 }
