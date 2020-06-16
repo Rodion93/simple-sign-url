@@ -15,10 +15,10 @@ module.exports = class SignUrl {
    * @constructor
    */
   constructor(options) {
-    if (options === void 0) {
+    if (options === void 0 || !options) {
       throw new Error(errorMessages.OPTIONS_UNDEFINED);
     }
-    if (options.secretKey === void 0) {
+    if (options.secretKey === void 0 || !options.secretKey) {
       throw new Error(errorMessages.SECRET_KEY_UNDEFINED);
     }
 
@@ -38,11 +38,11 @@ module.exports = class SignUrl {
    * @returns {string} Signed url.
    */
   generateSignedUrl(url, httpMethod) {
-    if (url === void 0) {
+    if (url === void 0 || !url) {
       throw new Error(errorMessages.URL_PARAM_UNDEFINED);
     }
 
-    if (httpMethod === void 0) {
+    if (httpMethod === void 0 || !httpMethod) {
       throw new Error(errorMessages.HTTP_METHOD_PARAM_UNDEFINED);
     }
 
