@@ -5,7 +5,7 @@ declare class SignUrl {
    * SignUrl constructor.
    * @param {SignUrlOptions} options - Starting options.
    */
-  constructor(options: SignUrlOptions) {}
+  constructor(options: SignUrlOptions);
 
   /**
    * Generates secured url.
