@@ -27,7 +27,7 @@ function createHashedKey(stringToHash, algorithm, secretKey) {
     secretKey,
     ITERATION_COUNT,
     HASH_LENGTH,
-    algorithm
+    algorithm,
   );
 
   return hashedKey.toString(DIGEST_VALUE);
@@ -49,7 +49,7 @@ function getSignedParamIndexPos(url) {
   if (signedParamPos === -1) {
     throw new HttpError(
       httpCodes.BAD_REQUEST,
-      errorMessages.SIGNED_PARAM_UNDEFINED
+      errorMessages.SIGNED_PARAM_UNDEFINED,
     );
   }
 
@@ -101,7 +101,7 @@ function validateCustomRequestObject(request) {
   }
 
   const { protocol, method, originalUrl, host } = request;
-  
+
   if (protocol === void 0 || !protocol) {
     throw new Error(`request.protocol ${errorMessages.UNDEFINED_MESSAGE}`);
   }

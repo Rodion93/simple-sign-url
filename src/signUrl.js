@@ -58,13 +58,26 @@ module.exports = class SignUrl {
       r: utils.generateRandomParam(),
     };
 
-    const { ENCODED_SEP, ENCODED_EQ, SIGNED_PARAM, URL_BEGIN_PARAMS_SYMBOL, URL_ADD_PARAMS_SYMBOL } = defaultValues;
+    const {
+      ENCODED_SEP,
+      ENCODED_EQ,
+      SIGNED_PARAM,
+      URL_BEGIN_PARAMS_SYMBOL,
+      URL_ADD_PARAMS_SYMBOL,
+    } = defaultValues;
 
-    const parameterSymbol = url.indexOf(URL_BEGIN_PARAMS_SYMBOL) === -1 ? URL_BEGIN_PARAMS_SYMBOL : URL_ADD_PARAMS_SYMBOL;
+    const parameterSymbol =
+      url.indexOf(URL_BEGIN_PARAMS_SYMBOL) === -1
+        ? URL_BEGIN_PARAMS_SYMBOL
+        : URL_ADD_PARAMS_SYMBOL;
     const dataAsString = querystring.stringify(data, ENCODED_SEP, ENCODED_EQ);
     const formattedUrl = `${url}${parameterSymbol}${SIGNED_PARAM}${dataAsString}${ENCODED_SEP}`;
 
-    const hashedKey = utils.createHashedKey(formattedUrl, this.algorithm, this.secretKey);
+    const hashedKey = utils.createHashedKey(
+      formattedUrl,
+      this.algorithm,
+      this.secretKey,
+    );
 
     const signedUrl = `${formattedUrl}${hashedKey}`;
 
@@ -82,11 +95,18 @@ module.exports = class SignUrl {
     }
 
     let url;
-    
-    const { ENCODED_SEP, ENCODED_EQ, SIGNED_PARAM_LENGTH, URL_HOST_PARAM_NAME } = defaultValues;
-    
-    if (typeof req === Request) {   
-      url = `${req.protocol}://${req.get(URL_HOST_PARAM_NAME)}${req.originalUrl}`;
+
+    const {
+      ENCODED_SEP,
+      ENCODED_EQ,
+      SIGNED_PARAM_LENGTH,
+      URL_HOST_PARAM_NAME,
+    } = defaultValues;
+
+    if (typeof req === Request) {
+      url = `${req.protocol}://${req.get(URL_HOST_PARAM_NAME)}${
+        req.originalUrl
+      }`;
     } else {
       utils.validateCustomRequestObject(req);
       url = `${req.protocol}://${req.host}${req.originalUrl}`;
@@ -98,14 +118,18 @@ module.exports = class SignUrl {
 
     const dataAsString = url.substring(
       signedParamIndex + SIGNED_PARAM_LENGTH,
-      signatureIndex
+      signatureIndex,
     );
     const data = querystring.parse(dataAsString, ENCODED_SEP, ENCODED_EQ);
 
     const urlSignature = url.substring(signatureIndex);
     const urlWithoutSign = url.substr(0, signatureIndex);
 
-    const hashedKey = utils.createHashedKey(urlWithoutSign, this.algorithm, this.secretKey);
+    const hashedKey = utils.createHashedKey(
+      urlWithoutSign,
+      this.algorithm,
+      this.secretKey,
+    );
 
     if (hashedKey !== urlSignature) {
       return httpCodes.FORBIDDEN;
@@ -154,7 +178,10 @@ module.exports = class SignUrl {
 };
 
 function onInvalidDefault() {
-  throw new HttpError(httpCodes.FORBIDDEN, errorMessages.URL_SIGNATURE_IS_NOT_VALID);
+  throw new HttpError(
+    httpCodes.FORBIDDEN,
+    errorMessages.URL_SIGNATURE_IS_NOT_VALID,
+  );
 }
 
 function onExpiredDefault() {

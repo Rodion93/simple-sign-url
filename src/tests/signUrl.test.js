@@ -13,7 +13,7 @@ function makeRequest(path, expectedCode = 200, httpMethod = HTTP_GET_METHOD) {
     request(
       path,
       {
-        method: httpMethod
+        method: httpMethod,
       },
       (err, response, body) => {
         if (err) {
@@ -25,7 +25,7 @@ function makeRequest(path, expectedCode = 200, httpMethod = HTTP_GET_METHOD) {
         } else {
           resolve(body);
         }
-      }
+      },
     );
   });
 }
@@ -39,7 +39,7 @@ describe('SignUrl tests', () => {
     signUrl = new SignUrl({
       secretKey: 'secretTest',
       ttl: 2,
-      algorithm: 'sha256'
+      algorithm: 'sha256',
     });
 
     app = express();
@@ -73,7 +73,7 @@ describe('SignUrl tests', () => {
   describe('Ok tests', () => {
     it('should create signUrl with default params', async () => {
       const sign = new SignUrl({
-        secretKey: 'secr'
+        secretKey: 'secr',
       });
 
       expect(sign).toBeTruthy();
