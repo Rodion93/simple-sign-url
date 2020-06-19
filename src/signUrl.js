@@ -22,9 +22,11 @@ module.exports = class SignUrl {
       throw new Error(errorMessages.SECRET_KEY_UNDEFINED);
     }
 
+    const { DEFAULT_TTL, DEFAULT_ALGORITHM } = defaultValues;
+
     this.secretKey = options.secretKey;
-    this.ttl = options.ttl || defaultValues.DEFAULT_TTL;
-    this.algorithm = options.algorithm || defaultValues.DEFAULT_ALGORITHM;
+    this.ttl = options.ttl || DEFAULT_TTL;
+    this.algorithm = options.algorithm || DEFAULT_ALGORITHM;
 
     this.generateSignedUrl = this.generateSignedUrl.bind(this);
     this.verifySignedUrl = this.verifySignedUrl.bind(this);
@@ -46,25 +48,23 @@ module.exports = class SignUrl {
       throw new Error(errorMessages.HTTP_METHOD_PARAM_UNDEFINED);
     }
 
-    if (url.endsWith('/')) {
+    if (url.endsWith(defaultValues.URL_SEPARATOR)) {
       throw new Error(errorMessages.URL_IS_NOT_VALID);
     }
 
     const data = {
       e: utils.generateExpiredParam(this.ttl),
       m: httpMethod.toUpperCase(),
-      r: utils.generateRandomParam()
+      r: utils.generateRandomParam(),
     };
 
-    const parameterSymbol = url.indexOf('?') === -1 ? '?' : '&';
-    const dataAsString = querystring.stringify(data, ';', ':');
-    const formattedUrl = `${url}${parameterSymbol}${defaultValues.SIGNED_PARAM}${dataAsString};`;
+    const { ENCODED_SEP, ENCODED_EQ, SIGNED_PARAM, URL_BEGIN_PARAMS_SYMBOL, URL_ADD_PARAMS_SYMBOL } = defaultValues;
 
-    const hashedKey = utils.createHashedKey(
-      formattedUrl,
-      this.algorithm,
-      this.secretKey
-    );
+    const parameterSymbol = url.indexOf(URL_BEGIN_PARAMS_SYMBOL) === -1 ? URL_BEGIN_PARAMS_SYMBOL : URL_ADD_PARAMS_SYMBOL;
+    const dataAsString = querystring.stringify(data, ENCODED_SEP, ENCODED_EQ);
+    const formattedUrl = `${url}${parameterSymbol}${SIGNED_PARAM}${dataAsString}${ENCODED_SEP}`;
+
+    const hashedKey = utils.createHashedKey(formattedUrl, this.algorithm, this.secretKey);
 
     const signedUrl = `${formattedUrl}${hashedKey}`;
 
@@ -73,30 +73,39 @@ module.exports = class SignUrl {
 
   /**
    * Verifying URL for validity and returns result code (0 is valid).
-   * @param {Request} req - Request.
+   * @param {Request | CustomRequestObject} req - Request.
    * @returns {number} Result code.
    */
   verifySignedUrl(req) {
-    const url = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
+    if (req === void 0 || !req) {
+      throw new Error(errorMessages.REQ_UNDEFINED);
+    }
+
+    let url;
+    
+    const { ENCODED_SEP, ENCODED_EQ, SIGNED_PARAM_LENGTH, URL_HOST_PARAM_NAME } = defaultValues;
+    
+    if (typeof req === Request) {   
+      url = `${req.protocol}://${req.get(URL_HOST_PARAM_NAME)}${req.originalUrl}`;
+    } else {
+      utils.validateCustomRequestObject(req);
+      url = `${req.protocol}://${req.host}${req.originalUrl}`;
+    }
 
     const signedParamIndex = utils.getSignedParamIndexPos(url);
 
-    const signatureIndex = url.lastIndexOf(';') + 1;
+    const signatureIndex = url.lastIndexOf(ENCODED_SEP) + 1;
 
     const dataAsString = url.substring(
-      signedParamIndex + defaultValues.SIGNED_PARAM_LENGTH,
+      signedParamIndex + SIGNED_PARAM_LENGTH,
       signatureIndex
     );
-    const data = querystring.parse(dataAsString, ';', ':');
+    const data = querystring.parse(dataAsString, ENCODED_SEP, ENCODED_EQ);
 
     const urlSignature = url.substring(signatureIndex);
     const urlWithoutSign = url.substr(0, signatureIndex);
 
-    const hashedKey = utils.createHashedKey(
-      urlWithoutSign,
-      this.algorithm,
-      this.secretKey
-    );
+    const hashedKey = utils.createHashedKey(urlWithoutSign, this.algorithm, this.secretKey);
 
     if (hashedKey !== urlSignature) {
       return httpCodes.FORBIDDEN;
@@ -145,10 +154,7 @@ module.exports = class SignUrl {
 };
 
 function onInvalidDefault() {
-  throw new HttpError(
-    httpCodes.FORBIDDEN,
-    errorMessages.URL_SIGNATURE_IS_NOT_VALID
-  );
+  throw new HttpError(httpCodes.FORBIDDEN, errorMessages.URL_SIGNATURE_IS_NOT_VALID);
 }
 
 function onExpiredDefault() {

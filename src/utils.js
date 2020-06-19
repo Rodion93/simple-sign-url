@@ -10,6 +10,7 @@ exports.getUrlWithoutSignedParam = getUrlWithoutSignedParam;
 exports.generateRandomParam = generateRandomParam;
 exports.getCurrentDateInSeconds = getCurrentDateInSeconds;
 exports.generateExpiredParam = generateExpiredParam;
+exports.validateCustomRequestObject = validateCustomRequestObject;
 
 /**
  * Create a hashed key with secretKey from the string
@@ -19,15 +20,17 @@ exports.generateExpiredParam = generateExpiredParam;
  * @returns {string} Ready hashed key.
  */
 function createHashedKey(stringToHash, algorithm, secretKey) {
+  const { ITERATION_COUNT, HASH_LENGTH, DIGEST_VALUE } = defaultValues;
+
   const hashedKey = crypto.pbkdf2Sync(
     stringToHash,
     secretKey,
-    defaultValues.ITERATION_COUNT,
-    defaultValues.HASH_LENGTH,
+    ITERATION_COUNT,
+    HASH_LENGTH,
     algorithm
   );
 
-  return hashedKey.toString(defaultValues.DIGEST_VALUE);
+  return hashedKey.toString(DIGEST_VALUE);
 }
 
 /**
@@ -36,10 +39,12 @@ function createHashedKey(stringToHash, algorithm, secretKey) {
  * @returns {number} Index of starting 'signed' parameter.
  */
 function getSignedParamIndexPos(url) {
-  let signedParamPos = url.lastIndexOf(`&${defaultValues.SIGNED_PARAM}`);
+  const { SIGNED_PARAM } = defaultValues;
+
+  let signedParamPos = url.lastIndexOf(`&${SIGNED_PARAM}`);
 
   if (signedParamPos === -1) {
-    signedParamPos = url.lastIndexOf(`?${defaultValues.SIGNED_PARAM}`);
+    signedParamPos = url.lastIndexOf(`?${SIGNED_PARAM}`);
   }
   if (signedParamPos === -1) {
     throw new HttpError(
@@ -84,4 +89,29 @@ function getCurrentDateInSeconds() {
  */
 function generateExpiredParam(ttl) {
   return getCurrentDateInSeconds() + ttl;
+}
+
+/**
+ * Validation of the CustomRequestObject
+ * @param {object} request - CustomRequestObject
+ */
+function validateCustomRequestObject(request) {
+  if (request === void 0 || !request) {
+    throw new Error(errorMessages.REQ_UNDEFINED);
+  }
+
+  const { protocol, method, originalUrl, host } = request;
+  
+  if (protocol === void 0 || !protocol) {
+    throw new Error(`request.protocol ${errorMessages.UNDEFINED_MESSAGE}`);
+  }
+  if (method === void 0 || !method) {
+    throw new Error(`request.method ${errorMessages.UNDEFINED_MESSAGE}`);
+  }
+  if (originalUrl === void 0 || !originalUrl) {
+    throw new Error(`request.originalUrl ${errorMessages.UNDEFINED_MESSAGE}`);
+  }
+  if (host === void 0 || !host) {
+    throw new Error(`request.host ${errorMessages.UNDEFINED_MESSAGE}`);
+  }
 }

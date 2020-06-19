@@ -6,3 +6,5 @@ exports.HTTP_METHOD_PARAM_UNDEFINED = 'Parameter "httpMethod" is not defined';
 exports.URL_IS_NOT_VALID = 'URL must not end with /';
 exports.URL_SIGNATURE_IS_NOT_VALID = 'URL signature is not valid';
 exports.SIGNED_URL_EXPIRED = 'Signed URL expired';
+exports.REQ_UNDEFINED = 'Parameter "req" is not defined';
+exports.UNDEFINED_MESSAGE = 'is not defined';
