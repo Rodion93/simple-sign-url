@@ -3,9 +3,11 @@ export = SignUrl;
 declare class SignUrl {
   /**
    * SignUrl constructor.
-   * @param {SignUrlOptions} options - Starting options.
+   * @param {string} secretKey - The secret string.
+   * @param {number} [ttl] - The default time-to-live in seconds.
+   * @param {string} [algorithm] - The hashing algorithm.
    */
-  constructor(options: SignUrlOptions);
+  constructor(secretKey: string, ttl?: number, algorithm?: string);
 
   /**
    * Generates secured url.
@@ -17,10 +19,10 @@ declare class SignUrl {
 
   /**
    * Verifying URL for validity and returns result code (0 is valid).
-   * @param {Request} req - Request.
+   * @param {Request | CustomRequestObject} req - Request or Custom object.
    * @returns {number} Result code.
    */
-  verifySignedUrl(req: Request): number;
+  verifySignedUrl(req: Request | CustomRequestObject): number;
 
   /**
    * Returns express middleware
@@ -32,13 +34,15 @@ declare class SignUrl {
 }
 
 /**
- * SignUrl options object.
- * @param {string} secretKey - The secret string.
- * @param {number} [ttl] - The default time-to-live in seconds.
- * @param {string} [algorithm] - The hashing algorithm.
+ * Custom request object
+ * @param {string} protocol - Protocol: http/https
+ * @param {string} host - Host: localhost/ip adress/web-site
+ * @param {string} originalUrl - Url without host
+ * @param {string} method - GET/PUT/POST/DELETE..
  */
-declare type SignUrlOptions = {
-  secretKey: string;
-  ttl?: number;
-  algorithm?: string;
+declare type CustomRequestObject = {
+  protocol: string;
+  host: string;
+  originalUrl: string;
+  method: string;
 };

@@ -8,25 +8,21 @@ const defaultValues = require('./constants/defaultValues.constant');
 module.exports = class SignUrl {
   /**
    * SignUrl constructor.
-   * @param {object} options - Starting options.
-   * @param {string} options.secretKey - The secret string.
-   * @param {number} [options.ttl] - The default time-to-live in seconds.
-   * @param {string} [options.algorithm] - The hashing algorithm.
+   * @param {string} secretKey - The secret string.
+   * @param {number} [ttl] - The default time-to-live in seconds.
+   * @param {string} [algorithm] - The hashing algorithm.
    * @constructor
    */
-  constructor(options) {
-    if (options === void 0 || !options) {
-      throw new Error(errorMessages.OPTIONS_UNDEFINED);
-    }
-    if (options.secretKey === void 0 || !options.secretKey) {
+  constructor(secretKey, ttl, algorithm) {
+    if (secretKey === void 0 || !secretKey) {
       throw new Error(errorMessages.SECRET_KEY_UNDEFINED);
     }
 
     const { DEFAULT_TTL, DEFAULT_ALGORITHM } = defaultValues;
 
-    this.secretKey = options.secretKey;
-    this.ttl = options.ttl || DEFAULT_TTL;
-    this.algorithm = options.algorithm || DEFAULT_ALGORITHM;
+    this.secretKey = secretKey;
+    this.ttl = ttl || DEFAULT_TTL;
+    this.algorithm = algorithm || DEFAULT_ALGORITHM;
 
     this.generateSignedUrl = this.generateSignedUrl.bind(this);
     this.verifySignedUrl = this.verifySignedUrl.bind(this);
