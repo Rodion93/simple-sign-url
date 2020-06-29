@@ -1,8 +1,8 @@
 const crypto = require('crypto');
-const HttpError = require('./httpError');
-const httpCodes = require('./constants/httpCodes.constant');
-const errorMessages = require('./constants/errorMessages.constant');
-const defaultValues = require('./constants/defaultValues.constant');
+const HttpError = require('../classes/httpError');
+const httpCodes = require('../constants/httpCodes.constant');
+const errorMessages = require('../constants/errorMessages.constant');
+const defaultValues = require('../constants/defaultValues.constant');
 
 exports.createHashedKey = createHashedKey;
 exports.getSignedParamIndexPos = getSignedParamIndexPos;
@@ -10,10 +10,10 @@ exports.getUrlWithoutSignedParam = getUrlWithoutSignedParam;
 exports.generateRandomParam = generateRandomParam;
 exports.getCurrentDateInSeconds = getCurrentDateInSeconds;
 exports.generateExpiredParam = generateExpiredParam;
-exports.validateCustomRequestObject = validateCustomRequestObject;
 
 /**
  * Create a hashed key with secretKey from the string
+ *
  * @param {string} stringToHash - The string that will be hashed.
  * @param {string} algorithm - Hashing algorithm.
  * @param {string} secretKey - Secret string.
@@ -34,17 +34,26 @@ function createHashedKey(stringToHash, algorithm, secretKey) {
 }
 
 /**
- * Get 'signed' parameter position.
+ * Get 'signed' parameter position
+ *
  * @param {string} url - Existing url.
  * @returns {number} Index of starting 'signed' parameter.
  */
 function getSignedParamIndexPos(url) {
-  const { SIGNED_PARAM } = defaultValues;
+  const {
+    SIGNED_PARAM,
+    URL_BEGIN_PARAMS_SYMBOL,
+    URL_ADD_PARAMS_SYMBOL,
+  } = defaultValues;
 
-  let signedParamPos = url.lastIndexOf(`&${SIGNED_PARAM}`);
+  let signedParamPos = url.lastIndexOf(
+    `${URL_ADD_PARAMS_SYMBOL}${SIGNED_PARAM}`,
+  );
 
   if (signedParamPos === -1) {
-    signedParamPos = url.lastIndexOf(`?${SIGNED_PARAM}`);
+    signedParamPos = url.lastIndexOf(
+      `${URL_BEGIN_PARAMS_SYMBOL}${SIGNED_PARAM}`,
+    );
   }
   if (signedParamPos === -1) {
     throw new HttpError(
@@ -57,7 +66,8 @@ function getSignedParamIndexPos(url) {
 }
 
 /**
- * Get url without 'signed' parameter.
+ * Get url without 'signed' parameter
+ *
  * @param {string} url - Existing url.
  * @returns {string} Formatted url without 'signed' parameter.
  */
@@ -67,7 +77,8 @@ function getUrlWithoutSignedParam(url) {
 }
 
 /**
- * Generates the 'random' parameter.
+ * Generates the 'random' parameter
+ *
  * @returns {number} Random number.
  */
 function generateRandomParam() {
@@ -75,7 +86,8 @@ function generateRandomParam() {
 }
 
 /**
- * Get current date in seconds format.
+ * Get current date in seconds format
+ *
  * @returns {number} Current date in seconds.
  */
 function getCurrentDateInSeconds() {
@@ -83,35 +95,11 @@ function getCurrentDateInSeconds() {
 }
 
 /**
- * Generates the 'expired' parameter.
+ * Generates the 'expired' parameter
+ *
  * @param {number} ttl - Time to live in seconds.
  * @returns {number} Expired date as number.
  */
 function generateExpiredParam(ttl) {
   return getCurrentDateInSeconds() + ttl;
-}
-
-/**
- * Validation of the CustomRequestObject
- * @param {object} request - CustomRequestObject
- */
-function validateCustomRequestObject(request) {
-  if (request === void 0 || !request) {
-    throw new Error(errorMessages.REQ_UNDEFINED);
-  }
-
-  const { protocol, method, originalUrl, host } = request;
-
-  if (protocol === void 0 || !protocol) {
-    throw new Error(`request.protocol ${errorMessages.UNDEFINED_MESSAGE}`);
-  }
-  if (method === void 0 || !method) {
-    throw new Error(`request.method ${errorMessages.UNDEFINED_MESSAGE}`);
-  }
-  if (originalUrl === void 0 || !originalUrl) {
-    throw new Error(`request.originalUrl ${errorMessages.UNDEFINED_MESSAGE}`);
-  }
-  if (host === void 0 || !host) {
-    throw new Error(`request.host ${errorMessages.UNDEFINED_MESSAGE}`);
-  }
 }

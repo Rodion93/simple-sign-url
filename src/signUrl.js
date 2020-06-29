@@ -1,22 +1,22 @@
 const querystring = require('querystring');
-const utils = require('./utils');
-const HttpError = require('./httpError');
-const httpCodes = require('./constants/httpCodes.constant');
-const errorMessages = require('./constants/errorMessages.constant');
-const defaultValues = require('./constants/defaultValues.constant');
+const helpers = require('./common/utils/helpers');
+const validators = require('./common/utils/validators');
+const HttpError = require('./common/classes/httpError');
+const httpCodes = require('./common/constants/httpCodes.constant');
+const errorMessages = require('./common/constants/errorMessages.constant');
+const defaultValues = require('./common/constants/defaultValues.constant');
 
 module.exports = class SignUrl {
   /**
-   * SignUrl constructor.
+   * SignUrl constructor
+   *
    * @param {string} secretKey - The secret string.
    * @param {number} [ttl] - The default time-to-live in seconds.
    * @param {string} [algorithm] - The hashing algorithm.
    * @constructor
    */
   constructor(secretKey, ttl, algorithm) {
-    if (secretKey === void 0 || !secretKey) {
-      throw new Error(errorMessages.SECRET_KEY_UNDEFINED);
-    }
+    validators.validateConstructorParams(secretKey, ttl, algorithm);
 
     const { DEFAULT_TTL, DEFAULT_ALGORITHM } = defaultValues;
 
@@ -30,28 +30,19 @@ module.exports = class SignUrl {
   }
 
   /**
-   * Generates secured url.
+   * Generates secured url
+   *
    * @param {string} url - Existing url(full address).
    * @param {string} httpMethod - The http method.
    * @returns {string} Signed url.
    */
   generateSignedUrl(url, httpMethod) {
-    if (url === void 0 || !url) {
-      throw new Error(errorMessages.URL_PARAM_UNDEFINED);
-    }
-
-    if (httpMethod === void 0 || !httpMethod) {
-      throw new Error(errorMessages.HTTP_METHOD_PARAM_UNDEFINED);
-    }
-
-    if (url.endsWith(defaultValues.URL_SEPARATOR)) {
-      throw new Error(errorMessages.URL_IS_NOT_VALID);
-    }
+    validators.validateGenerateSignedUrlParams(url, httpMethod);
 
     const data = {
-      e: utils.generateExpiredParam(this.ttl),
+      e: helpers.generateExpiredParam(this.ttl),
       m: httpMethod.toUpperCase(),
-      r: utils.generateRandomParam(),
+      r: helpers.generateRandomParam(),
     };
 
     const {
@@ -69,7 +60,7 @@ module.exports = class SignUrl {
     const dataAsString = querystring.stringify(data, ENCODED_SEP, ENCODED_EQ);
     const formattedUrl = `${url}${parameterSymbol}${SIGNED_PARAM}${dataAsString}${ENCODED_SEP}`;
 
-    const hashedKey = utils.createHashedKey(
+    const hashedKey = helpers.createHashedKey(
       formattedUrl,
       this.algorithm,
       this.secretKey,
@@ -81,7 +72,8 @@ module.exports = class SignUrl {
   }
 
   /**
-   * Verifying URL for validity and returns result code (0 is valid).
+   * Verifying URL for validity and returns result code (0 is valid)
+   *
    * @param {Request | CustomRequestObject} req - Request.
    * @returns {number} Result code.
    */
@@ -94,34 +86,38 @@ module.exports = class SignUrl {
 
     const {
       ENCODED_SEP,
-      ENCODED_EQ,
+      DECODED_EQ,
+      DECODED_SEP,
       SIGNED_PARAM_LENGTH,
       URL_HOST_PARAM_NAME,
+      FUNCTION_TYPE,
     } = defaultValues;
 
-    if (typeof req === Request) {
+    if (typeof req.get === FUNCTION_TYPE && req.get(URL_HOST_PARAM_NAME)) {
       url = `${req.protocol}://${req.get(URL_HOST_PARAM_NAME)}${
         req.originalUrl
       }`;
     } else {
-      utils.validateCustomRequestObject(req);
+      validators.validateCustomRequestObject(req);
+
       url = `${req.protocol}://${req.host}${req.originalUrl}`;
     }
 
-    const signedParamIndex = utils.getSignedParamIndexPos(url);
+    const signedParamIndex = helpers.getSignedParamIndexPos(url);
 
-    const signatureIndex = url.lastIndexOf(ENCODED_SEP) + 1;
+    const signatureIndex = url.lastIndexOf(ENCODED_SEP) + ENCODED_SEP.length;
 
     const dataAsString = url.substring(
       signedParamIndex + SIGNED_PARAM_LENGTH,
       signatureIndex,
     );
-    const data = querystring.parse(dataAsString, ENCODED_SEP, ENCODED_EQ);
+    const decodedStringData = decodeURIComponent(dataAsString);
+    const data = querystring.parse(decodedStringData, DECODED_SEP, DECODED_EQ);
 
     const urlSignature = url.substring(signatureIndex);
     const urlWithoutSign = url.substr(0, signatureIndex);
 
-    const hashedKey = utils.createHashedKey(
+    const hashedKey = helpers.createHashedKey(
       urlWithoutSign,
       this.algorithm,
       this.secretKey,
@@ -135,7 +131,7 @@ module.exports = class SignUrl {
       return httpCodes.FORBIDDEN;
     }
 
-    if (data.e && data.e < utils.getCurrentDateInSeconds()) {
+    if (data.e && data.e < helpers.getCurrentDateInSeconds()) {
       return httpCodes.EXPIRED;
     }
 
@@ -144,6 +140,7 @@ module.exports = class SignUrl {
 
   /**
    * Returns express middleware
+   *
    * @param {Function} [onInvalid] - Function that emits when the signature is invalid.
    * @param {Function} [onExpired] - Function that emits when the signature is expired.
    * @returns {Function} Express middleware.
@@ -163,7 +160,7 @@ module.exports = class SignUrl {
             return onExpired(req, res, next);
         }
 
-        req.url = utils.getUrlWithoutSignedParam(req.url);
+        req.url = helpers.getUrlWithoutSignedParam(req.url);
       } catch (err) {
         return next(err);
       }
