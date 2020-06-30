@@ -83,8 +83,14 @@ app.get('/resource', signUrl.verifier(), (req, res, next) => {
 ## Verify url with custom callbacks
 
 ```javascript
-const onInvalid = (req, res, next) => console.log('Url is invalid');
-const onExpired = (req, res, next) => console.log('Url is expired');
+const onInvalid = (req, res, next) => {
+  console.log('Url is invalid');
+  res.sendStatus(403);
+};
+const onExpired = (req, res, next) => {
+  console.log('Url is expired');
+  res.sendStatus(410);
+};
 
 app.get(
   '/resource',
