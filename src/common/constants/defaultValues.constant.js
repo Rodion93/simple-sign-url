@@ -1,5 +1,5 @@
 const signedParam = 'signed=';
-const DECODED_EQ = '=';
+const DECODED_EQ = ':';
 const DECODED_SEP = ';';
 
 exports.DEFAULT_ALGORITHM = 'sha512';
