@@ -1,4 +1,4 @@
-exports.SECRET_KEY_UNDEFINED = 'Secret key is required';
+exports.SECRET_KEY_UNDEFINED = 'Secret key is not defined or has wrong type';
 exports.SIGNED_PARAM_UNDEFINED = 'Signed parameter is not defined';
 exports.URL_PARAM_UNDEFINED = 'Parameter "URL" is not defined or has wrong type';
 exports.HTTP_METHOD_PARAM_UNDEFINED = 'Parameter "httpMethod" is not defined or has wrong type';
