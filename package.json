@@ -1,5 +1,5 @@
 {
-  "name": "simple-sign-url",
+  "name": "owncloud-sign-url",
   "version": "1.1.2",
   "description": "Express library for signing urls and validating them.",
   "keywords": [
@@ -19,14 +19,17 @@
     }
   ],
   "author": {
-    "name": "Rodion Horbulenko"
+    "name": "Thomas Müller"
   },
+  "contributes": [
+    "Rodion Horbulenko"
+  ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/Rodion93/simple-sign-url.git"
+    "url": "https://github.com/DeepDiver1975/owncloud-sign-url.git"
   },
   "bugs": {
-    "url": "https://github.com/Rodion93/simple-sign-url/issues"
+    "url": "https://github.com/DeepDiver1975/owncloud-sign-url/issues"
   },
   "scripts": {
     "test": "jest"

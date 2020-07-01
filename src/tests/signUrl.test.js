@@ -1,34 +1,10 @@
 const SignUrl = require('../signUrl');
-const express = require('express');
-const request = require('request');
 const httpCodes = require('../constants/httpCodes.constant');
 const errorMessages = require('../constants/errorMessages.constant');
 
 const HTTP_GET_METHOD = 'get';
 const HTTP_POST_METHOD = 'post';
 const TEST_PORT = 33001;
-
-function makeRequest(path, expectedCode = 200, httpMethod = HTTP_GET_METHOD) {
-  return new Promise((resolve, reject) => {
-    request(
-      path,
-      {
-        method: httpMethod
-      },
-      (err, response, body) => {
-        if (err) {
-          reject(err);
-        } else if (response.statusCode != expectedCode) {
-          err = new Error(`Wrong status code: ${response.statusCode}`);
-          err.statusCode = response.statusCode;
-          reject(err);
-        } else {
-          resolve(body);
-        }
-      }
-    );
-  });
-}
 
 describe('SignUrl tests', () => {
   let signUrl;
@@ -37,32 +13,10 @@ describe('SignUrl tests', () => {
 
   beforeAll(async () => {
     signUrl = new SignUrl({
+      credential: 'user',
       secretKey: 'secretTest',
       ttl: 2,
       algorithm: 'sha256'
-    });
-
-    app = express();
-    app.get('/try', signUrl.verifier(), (_, res) => {
-      res.send('ok');
-    });
-    app.post('/try', signUrl.verifier(), (_, res) => {
-      res.send('ok');
-    });
-
-    const customRoute = express.Router();
-
-    customRoute.get('/try', signUrl.verifier(), (_, res) => {
-      res.send('ok');
-    });
-
-    app.use('/customRoute', customRoute);
-
-    server = app.listen(TEST_PORT);
-
-    app.use(async (err, req, res, next) => {
-      res.status(err.status);
-      res.send(err.message);
     });
   });
 
@@ -73,39 +27,40 @@ describe('SignUrl tests', () => {
   describe('Ok tests', () => {
     it('should create signUrl with default params', async () => {
       const sign = new SignUrl({
+        credential: 'user',
         secretKey: 'secr'
       });
 
       expect(sign).toBeTruthy();
     });
 
-    it('should get OK', async () => {
+    it('should get OK', () => {
       const url = `http://localhost:${TEST_PORT}/try`;
 
       const signedUrl = signUrl.generateSignedUrl(url, HTTP_GET_METHOD);
-
-      await makeRequest(signedUrl);
+      const errorCode = signUrl.verifySignedUrl(signedUrl);
+      expect(errorCode).toEqual(200);
     });
 
-    it('should get OK (with custom route)', async () => {
+    it('should get OK (with custom route)', () => {
       const url = `http://localhost:${TEST_PORT}/customRoute/try`;
 
       const signedUrl = signUrl.generateSignedUrl(url, HTTP_GET_METHOD);
-
-      await makeRequest(signedUrl);
+      const errorCode = signUrl.verifySignedUrl(signedUrl);
+      expect(errorCode).toEqual(200);
     });
 
-    it('should get OK (with additional parameter)', async () => {
+    it('should get OK (with additional parameter)', () => {
       const url = `http://localhost:${TEST_PORT}/try?bbub=sdfsd`;
 
       const signedUrl = signUrl.generateSignedUrl(url, HTTP_GET_METHOD);
-
-      await makeRequest(signedUrl);
+      const errorCode = signUrl.verifySignedUrl(signedUrl);
+      expect(errorCode).toEqual(200);
     });
   });
 
   describe('Error tests', () => {
-    it('should throw error when "options" is not defined', async () => {
+    it('should throw error when "options" is not defined', () => {
       expect.assertions(1);
 
       try {
@@ -115,11 +70,21 @@ describe('SignUrl tests', () => {
       }
     });
 
-    it('should throw error when "secret key" is not defined', async () => {
+    it('should throw error when "credential" is not defined', () => {
       expect.assertions(1);
 
       try {
         new SignUrl({});
+      } catch (err) {
+        expect(err.message).toEqual(errorMessages.CREDENTIAL_UNDEFINED);
+      }
+    });
+
+    it('should throw error when "secret key" is not defined', () => {
+      expect.assertions(1);
+
+      try {
+        new SignUrl({credential:'user'});
       } catch (err) {
         expect(err.message).toEqual(errorMessages.SECRET_KEY_UNDEFINED);
       }
@@ -156,26 +121,26 @@ describe('SignUrl tests', () => {
       }
     });
 
-    it('should throw error when "signed" parameter is not defined', async () => {
+    it('should throw error when "OC-Signature" parameter is not defined', async () => {
       const url = `http://localhost:${TEST_PORT}/try/`;
-
-      await makeRequest(url, httpCodes.BAD_REQUEST);
+      const errorCode = signUrl.verifySignedUrl(url);
+      expect(errorCode).toEqual(httpCodes.BAD_REQUEST);
     });
 
     it('should return 403 when token is not valid', async () => {
       const url = `http://localhost:${TEST_PORT}/try`;
 
       const signedUrl = signUrl.generateSignedUrl(url, HTTP_GET_METHOD);
-
-      await makeRequest(signedUrl + '1', httpCodes.FORBIDDEN);
+      const errorCode = signUrl.verifySignedUrl(signedUrl + '1');
+      expect(errorCode).toEqual(httpCodes.FORBIDDEN);
     });
 
     it('should return 403 when httpMethod is different', async () => {
       const url = `http://localhost:${TEST_PORT}/try`;
 
       const signedUrl = signUrl.generateSignedUrl(url, HTTP_GET_METHOD);
-
-      await makeRequest(signedUrl, httpCodes.FORBIDDEN, HTTP_POST_METHOD);
+      const errorCode = signUrl.verifySignedUrl(signedUrl + '1', HTTP_POST_METHOD);
+      expect(errorCode).toEqual(httpCodes.FORBIDDEN);
     });
 
     it('should return 410 when token expired', async () => {
@@ -185,7 +150,8 @@ describe('SignUrl tests', () => {
 
       await new Promise(resolve => setTimeout(resolve, 3000));
 
-      await makeRequest(signedUrl, httpCodes.EXPIRED);
+      const errorCode = signUrl.verifySignedUrl(signedUrl);
+      expect(errorCode).toEqual(httpCodes.EXPIRED);
     });
   });
 });

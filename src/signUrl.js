@@ -1,6 +1,4 @@
-const querystring = require('querystring');
 const utils = require('./utils');
-const HttpError = require('./httpError');
 const httpCodes = require('./constants/httpCodes.constant');
 const errorMessages = require('./constants/errorMessages.constant');
 const defaultValues = require('./constants/defaultValues.constant');
@@ -9,6 +7,7 @@ module.exports = class SignUrl {
   /**
    * SignUrl constructor.
    * @param {object} options - Starting options.
+   * @param {string} options.credential - The credential string.
    * @param {string} options.secretKey - The secret string.
    * @param {number} [options.ttl] - The default time-to-live in seconds.
    * @param {string} [options.algorithm] - The hashing algorithm.
@@ -18,17 +17,20 @@ module.exports = class SignUrl {
     if (options === void 0 || !options) {
       throw new Error(errorMessages.OPTIONS_UNDEFINED);
     }
+    if (options.credential === void 0 || !options.credential) {
+      throw new Error(errorMessages.CREDENTIAL_UNDEFINED);
+    }
     if (options.secretKey === void 0 || !options.secretKey) {
       throw new Error(errorMessages.SECRET_KEY_UNDEFINED);
     }
 
     this.secretKey = options.secretKey;
+    this.credential = options.credential;
     this.ttl = options.ttl || defaultValues.DEFAULT_TTL;
     this.algorithm = options.algorithm || defaultValues.DEFAULT_ALGORITHM;
 
     this.generateSignedUrl = this.generateSignedUrl.bind(this);
     this.verifySignedUrl = this.verifySignedUrl.bind(this);
-    this.verifier = this.verifier.bind(this);
   }
 
   /**
@@ -50,50 +52,36 @@ module.exports = class SignUrl {
       throw new Error(errorMessages.URL_IS_NOT_VALID);
     }
 
-    const data = {
-      e: utils.generateExpiredParam(this.ttl),
-      m: httpMethod.toUpperCase(),
-      r: utils.generateRandomParam()
-    };
-
-    const parameterSymbol = url.indexOf('?') === -1 ? '?' : '&';
-    const dataAsString = querystring.stringify(data, ';', ':');
-    const formattedUrl = `${url}${parameterSymbol}${defaultValues.SIGNED_PARAM}${dataAsString};`;
+    url = new URL(url)
+    url.searchParams.set('OC-Credential', this.credential);
+    url.searchParams.set('OC-Date', new Date().toISOString());
+    url.searchParams.set('OC-Expires', this.ttl);
+    url.searchParams.set('OC-Verb', httpMethod.toUpperCase());
 
     const hashedKey = utils.createHashedKey(
-      formattedUrl,
+      url.toString(),
       this.algorithm,
       this.secretKey
     );
 
-    const signedUrl = `${formattedUrl}${hashedKey}`;
-
-    return signedUrl;
+    url.searchParams.set('OC-Signature', hashedKey);
+    return url.toString();
   }
 
   /**
    * Verifying URL for validity and returns result code.
-   * @param {Request} req - Request.
    * @returns {number} Result code.
    */
-  verifySignedUrl(req) {
-    const url = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
-
-    const signedParamIndex = utils.getSignedParamIndexPos(url);
-
-    const signatureIndex = url.lastIndexOf(';') + 1;
-
-    const dataAsString = url.substring(
-      signedParamIndex + defaultValues.SIGNED_PARAM_LENGTH,
-      signatureIndex
-    );
-    const data = querystring.parse(dataAsString, ';', ':');
-
-    const urlSignature = url.substring(signatureIndex);
-    const urlWithoutSign = url.substr(0, signatureIndex);
+  verifySignedUrl(url, method = 'GET') {
+    url = new URL(url)
+    const urlSignature = url.searchParams.get('OC-Signature')
+    if (urlSignature === null) {
+      return httpCodes.BAD_REQUEST;
+    }
+    url.searchParams.delete('OC-Signature')
 
     const hashedKey = utils.createHashedKey(
-      urlWithoutSign,
+      url.toString(),
       this.algorithm,
       this.secretKey
     );
@@ -102,61 +90,33 @@ module.exports = class SignUrl {
       return httpCodes.FORBIDDEN;
     }
 
-    if (data.m && data.m !== req.method) {
+    const ocVerb = url.searchParams.get('OC-Verb')
+    if (ocVerb && ocVerb.toUpperCase() !== method.toUpperCase()) {
       return httpCodes.FORBIDDEN;
     }
 
-    if (data.e && data.e < utils.getCurrentDateInSeconds()) {
+    const date = url.searchParams.get('OC-Date')
+    if (date === null) {
+      return httpCodes.BAD_REQUEST;
+    }
+
+    var expires = url.searchParams.get('OC-Expires')
+    if (expires === null) {
+      return httpCodes.BAD_REQUEST;
+    }
+    expires = parseInt(expires)
+    if (expires === NaN) {
+      return httpCodes.BAD_REQUEST;
+    }
+    const expiryDate = new Date(date);
+    console.log('date', expiryDate)
+    expiryDate.setSeconds(expiryDate.getSeconds() + expires); 
+    console.log('expiry', expiryDate)
+    console.log('now', new Date())
+    if (expiryDate < new Date()) {
       return httpCodes.EXPIRED;
     }
 
-    return 0;
+    return httpCodes.OK;
   }
-
-  /**
-   * Returns express middleware
-   * @param {Function} [onInvalid] - Function that emits when the signature is invalid.
-   * @param {Function} [onExpired] - Function that emits when the signature is expired.
-   * @returns {Function} Express middleware.
-   */
-  verifier(onInvalid, onExpired) {
-    onInvalid = onInvalid || onInvalidDefault;
-    onExpired = onExpired || onExpiredDefault;
-
-    return (req, res, next) => {
-      try {
-        const errorCode = this.verifySignedUrl(req);
-
-        switch (errorCode) {
-          case httpCodes.FORBIDDEN:
-            return onInvalid(req, res, next);
-          case httpCodes.EXPIRED:
-            return onExpired(req, res, next);
-        }
-
-        req.url = utils.getUrlWithoutSignedParam(req.url);
-      } catch (err) {
-        return next(err);
-      }
-
-      return next();
-    };
-  }
-};
-
-/**
- * Default function when token is not valid
- */
-function onInvalidDefault() {
-  throw new HttpError(
-    httpCodes.FORBIDDEN,
-    errorMessages.URL_SIGNATURE_IS_NOT_VALID
-  );
-}
-
-/**
- * Default function when token expired
- */
-function onExpiredDefault() {
-  throw new HttpError(httpCodes.EXPIRED, errorMessages.SIGNED_URL_EXPIRED);
 }
