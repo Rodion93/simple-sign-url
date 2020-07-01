@@ -9,6 +9,7 @@ module.exports = class SignUrl {
   /**
    * SignUrl constructor.
    * @param {object} options - Starting options.
+   * @param {string} options.credential - The credential string.
    * @param {string} options.secretKey - The secret string.
    * @param {number} [options.ttl] - The default time-to-live in seconds.
    * @param {string} [options.algorithm] - The hashing algorithm.
@@ -18,11 +19,15 @@ module.exports = class SignUrl {
     if (options === void 0 || !options) {
       throw new Error(errorMessages.OPTIONS_UNDEFINED);
     }
+    if (options.credential === void 0 || !options.credential) {
+      throw new Error(errorMessages.CREDENTIAL_UNDEFINED);
+    }
     if (options.secretKey === void 0 || !options.secretKey) {
       throw new Error(errorMessages.SECRET_KEY_UNDEFINED);
     }
 
     this.secretKey = options.secretKey;
+    this.credential = options.credential;
     this.ttl = options.ttl || defaultValues.DEFAULT_TTL;
     this.algorithm = options.algorithm || defaultValues.DEFAULT_ALGORITHM;
 
@@ -50,25 +55,20 @@ module.exports = class SignUrl {
       throw new Error(errorMessages.URL_IS_NOT_VALID);
     }
 
-    const data = {
-      e: utils.generateExpiredParam(this.ttl),
-      m: httpMethod.toUpperCase(),
-      r: utils.generateRandomParam()
-    };
-
-    const parameterSymbol = url.indexOf('?') === -1 ? '?' : '&';
-    const dataAsString = querystring.stringify(data, ';', ':');
-    const formattedUrl = `${url}${parameterSymbol}${defaultValues.SIGNED_PARAM}${dataAsString};`;
+    url = new URL(url)
+    url.searchParams.set('OC-Credential', this.credential);
+    url.searchParams.set('OC-Date', new Date().toISOString());
+    url.searchParams.set('OC-Expires', this.ttl);
+    url.searchParams.set('OC-Verb', httpMethod);
 
     const hashedKey = utils.createHashedKey(
-      formattedUrl,
+      url.toString,
       this.algorithm,
       this.secretKey
     );
 
-    const signedUrl = `${formattedUrl}${hashedKey}`;
-
-    return signedUrl;
+    url.searchParams.set('OC-Signature', hashedKey);
+    return url.toString();
   }
 
   /**

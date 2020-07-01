@@ -73,6 +73,7 @@ describe('SignUrl tests', () => {
   describe('Ok tests', () => {
     it('should create signUrl with default params', async () => {
       const sign = new SignUrl({
+        credential: 'user',
         secretKey: 'secr'
       });
 
@@ -115,11 +116,21 @@ describe('SignUrl tests', () => {
       }
     });
 
-    it('should throw error when "secret key" is not defined', async () => {
+    it('should throw error when "credential" is not defined', async () => {
       expect.assertions(1);
 
       try {
         new SignUrl({});
+      } catch (err) {
+        expect(err.message).toEqual(errorMessages.CREDENTIAL_UNDEFINED);
+      }
+    });
+
+    it('should throw error when "secret key" is not defined', async () => {
+      expect.assertions(1);
+
+      try {
+        new SignUrl({credential:'user'});
       } catch (err) {
         expect(err.message).toEqual(errorMessages.SECRET_KEY_UNDEFINED);
       }
