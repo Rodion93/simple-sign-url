@@ -1,6 +1,6 @@
 {
   "name": "owncloud-sign-url",
-  "version": "1.1.2",
+  "version": "1.0.0",
   "description": "Express library for signing urls and validating them.",
   "keywords": [
     "node",
