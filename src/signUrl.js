@@ -109,10 +109,7 @@ module.exports = class SignUrl {
       return httpCodes.BAD_REQUEST;
     }
     const expiryDate = new Date(date);
-    console.log('date', expiryDate)
     expiryDate.setSeconds(expiryDate.getSeconds() + expires); 
-    console.log('expiry', expiryDate)
-    console.log('now', new Date())
     if (expiryDate < new Date()) {
       return httpCodes.EXPIRED;
     }
