@@ -1,7 +1,7 @@
 owncloud-sign-url
 ======
 
-[![Build Status](https://travis-ci.org/Rodion93/owncloud-sign-url.svg?branch=master)](https://travis-ci.org/Rodion93/owncloud-sign-url) [![npm version](https://badge.fury.io/js/owncloud-sign-url.svg)](https://badge.fury.io/js/owncloud-sign-url) [![Coverage Status](https://coveralls.io/repos/github/Rodion93/owncloud-sign-url/badge.svg?branch=master)](https://coveralls.io/github/Rodion93/owncloud-sign-url?branch=master)
+[![Build Status](https://travis-ci.org/DeepDiver1975/owncloud-sign-url.svg?branch=master)](https://travis-ci.org/DeepDiver1975/owncloud-sign-url) [![npm version](https://badge.fury.io/js/owncloud-sign-url.svg)](https://badge.fury.io/js/owncloud-sign-url) [![Coverage Status](https://coveralls.io/repos/github/DeepDiver1975/owncloud-sign-url/badge.svg?branch=master)](https://coveralls.io/github/DeepDiver1975/owncloud-sign-url?branch=master)
 
 owncloud-sign-url is a little node.js library for signing urls and validating them based on secret key.
 
