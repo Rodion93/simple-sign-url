@@ -1,8 +1,8 @@
 const crypto = require('crypto');
-const HttpError = require('./httpError');
-const httpCodes = require('./constants/httpCodes.constant');
-const errorMessages = require('./constants/errorMessages.constant');
-const defaultValues = require('./constants/defaultValues.constant');
+const HttpError = require('../classes/httpError');
+const httpCodes = require('../constants/httpCodes.constant');
+const errorMessages = require('../constants/errorMessages.constant');
+const defaultValues = require('../constants/defaultValues.constant');
 
 exports.createHashedKey = createHashedKey;
 exports.getSignedParamIndexPos = getSignedParamIndexPos;
@@ -13,38 +13,52 @@ exports.generateExpiredParam = generateExpiredParam;
 
 /**
  * Create a hashed key with secretKey from the string
+ *
  * @param {string} stringToHash - The string that will be hashed.
  * @param {string} algorithm - Hashing algorithm.
  * @param {string} secretKey - Secret string.
  * @returns {string} Ready hashed key.
  */
 function createHashedKey(stringToHash, algorithm, secretKey) {
+  const { ITERATION_COUNT, HASH_LENGTH, DIGEST_VALUE } = defaultValues;
+
   const hashedKey = crypto.pbkdf2Sync(
     stringToHash,
     secretKey,
-    defaultValues.ITERATION_COUNT,
-    defaultValues.HASH_LENGTH,
-    algorithm
+    ITERATION_COUNT,
+    HASH_LENGTH,
+    algorithm,
   );
 
-  return hashedKey.toString(defaultValues.DIGEST_VALUE);
+  return hashedKey.toString(DIGEST_VALUE);
 }
 
 /**
- * Get 'signed' parameter position.
+ * Get 'signed' parameter position
+ *
  * @param {string} url - Existing url.
  * @returns {number} Index of starting 'signed' parameter.
  */
 function getSignedParamIndexPos(url) {
-  let signedParamPos = url.lastIndexOf(`&${defaultValues.SIGNED_PARAM}`);
+  const {
+    SIGNED_PARAM,
+    URL_BEGIN_PARAMS_SYMBOL,
+    URL_ADD_PARAMS_SYMBOL,
+  } = defaultValues;
+
+  let signedParamPos = url.lastIndexOf(
+    `${URL_ADD_PARAMS_SYMBOL}${SIGNED_PARAM}`,
+  );
 
   if (signedParamPos === -1) {
-    signedParamPos = url.lastIndexOf(`?${defaultValues.SIGNED_PARAM}`);
+    signedParamPos = url.lastIndexOf(
+      `${URL_BEGIN_PARAMS_SYMBOL}${SIGNED_PARAM}`,
+    );
   }
   if (signedParamPos === -1) {
     throw new HttpError(
       httpCodes.BAD_REQUEST,
-      errorMessages.SIGNED_PARAM_UNDEFINED
+      errorMessages.SIGNED_PARAM_UNDEFINED,
     );
   }
 
@@ -52,7 +66,8 @@ function getSignedParamIndexPos(url) {
 }
 
 /**
- * Get url without 'signed' parameter.
+ * Get url without 'signed' parameter
+ *
  * @param {string} url - Existing url.
  * @returns {string} Formatted url without 'signed' parameter.
  */
@@ -62,7 +77,8 @@ function getUrlWithoutSignedParam(url) {
 }
 
 /**
- * Generates the 'random' parameter.
+ * Generates the 'random' parameter
+ *
  * @returns {number} Random number.
  */
 function generateRandomParam() {
@@ -70,7 +86,8 @@ function generateRandomParam() {
 }
 
 /**
- * Get current date in seconds format.
+ * Get current date in seconds format
+ *
  * @returns {number} Current date in seconds.
  */
 function getCurrentDateInSeconds() {
@@ -78,7 +95,8 @@ function getCurrentDateInSeconds() {
 }
 
 /**
- * Generates the 'expired' parameter.
+ * Generates the 'expired' parameter
+ *
  * @param {number} ttl - Time to live in seconds.
  * @returns {number} Expired date as number.
  */
