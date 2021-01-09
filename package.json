@@ -1,6 +1,6 @@
 {
   "name": "simple-sign-url",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Express library for signing urls and validating them.",
   "keywords": [
     "node",
