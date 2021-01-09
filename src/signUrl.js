@@ -10,9 +10,9 @@ module.exports = class SignUrl {
   /**
    * SignUrl constructor
    *
-   * @param {string} secretKey - The secret string.
-   * @param {number} [ttl] - The default time-to-live in seconds.
-   * @param {string} [algorithm] - The hashing algorithm.
+   * @param {string} secretKey - Secret string.
+   * @param {number} [ttl] - Default time-to-live in seconds.
+   * @param {string} [algorithm] - Hashing algorithm.
    * @constructor
    */
   constructor(secretKey, ttl, algorithm) {
@@ -33,7 +33,7 @@ module.exports = class SignUrl {
    * Generates secured url
    *
    * @param {string} url - Existing url(full address).
-   * @param {string} httpMethod - The http method.
+   * @param {string} httpMethod - Http method.
    * @returns {string} Signed url.
    */
   generateSignedUrl(url, httpMethod) {
@@ -53,10 +53,12 @@ module.exports = class SignUrl {
       URL_ADD_PARAMS_SYMBOL,
     } = defaultValues;
 
-    const parameterSymbol =
-      url.indexOf(URL_BEGIN_PARAMS_SYMBOL) === -1
-        ? URL_BEGIN_PARAMS_SYMBOL
-        : URL_ADD_PARAMS_SYMBOL;
+    const isUrlContainsParamsSymbol =
+      url.indexOf(URL_BEGIN_PARAMS_SYMBOL) === -1;
+
+    const parameterSymbol = isUrlContainsParamsSymbol
+      ? URL_BEGIN_PARAMS_SYMBOL
+      : URL_ADD_PARAMS_SYMBOL;
     const dataAsString = querystring.stringify(data, ENCODED_SEP, ENCODED_EQ);
     const formattedUrl = `${url}${parameterSymbol}${SIGNED_PARAM}${dataAsString}${ENCODED_SEP}`;
 
@@ -72,7 +74,7 @@ module.exports = class SignUrl {
   }
 
   /**
-   * Verifying URL for validity and returns result code (0 is valid)
+   * Verifying URL for validity and returns the result code (0 is valid)
    *
    * @param {Request | CustomRequestObject} req - Request.
    * @returns {number} Result code.
@@ -82,26 +84,14 @@ module.exports = class SignUrl {
       throw new Error(errorMessages.REQ_UNDEFINED);
     }
 
-    let url;
-
     const {
       ENCODED_SEP,
       DECODED_EQ,
       DECODED_SEP,
       SIGNED_PARAM_LENGTH,
-      URL_HOST_PARAM_NAME,
-      FUNCTION_TYPE,
     } = defaultValues;
 
-    if (typeof req.get === FUNCTION_TYPE && req.get(URL_HOST_PARAM_NAME)) {
-      url = `${req.protocol}://${req.get(URL_HOST_PARAM_NAME)}${
-        req.originalUrl
-      }`;
-    } else {
-      validators.validateCustomRequestObject(req);
-
-      url = `${req.protocol}://${req.host}${req.originalUrl}`;
-    }
+    const url = helpers.getUrlFromRequest(req);
 
     const signedParamIndex = helpers.getSignedParamIndexPos(url);
 
