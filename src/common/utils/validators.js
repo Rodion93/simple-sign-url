@@ -9,8 +9,8 @@ exports.validateGenerateSignedUrlParams = validateGenerateSignedUrlParams;
  * Validation of the constructor parameters
  *
  * @param {string} secretKey - Secret key as string.
- * @param {number} [ttl] - The default time-to-live in seconds.
- * @param {string} [algorithm] - The hashing algorithm. For example - 'sha512'.
+ * @param {number} [ttl] - Default time-to-live in seconds.
+ * @param {string} [algorithm] - Hashing algorithm. For example - 'sha512'.
  */
 function validateConstructorParams(secretKey, ttl, algorithm) {
   if (
@@ -55,9 +55,9 @@ function validateCustomRequestObject({ protocol, method, originalUrl, host }) {
 }
 
 /**
- * Validation of params for the signing urls
+ * Validation of params for signing urls
  *
- * @param {string} url - Url in the full format.
+ * @param {string} url - Url in a full format.
  * @param {string} httpMethod - HTTP method.
  */
 function validateGenerateSignedUrlParams(url, httpMethod) {
