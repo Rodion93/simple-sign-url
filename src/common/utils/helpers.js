@@ -3,6 +3,7 @@ const HttpError = require('../classes/httpError');
 const httpCodes = require('../constants/httpCodes.constant');
 const errorMessages = require('../constants/errorMessages.constant');
 const defaultValues = require('../constants/defaultValues.constant');
+const validators = require('./validators');
 
 exports.createHashedKey = createHashedKey;
 exports.getSignedParamIndexPos = getSignedParamIndexPos;
@@ -10,6 +11,7 @@ exports.getUrlWithoutSignedParam = getUrlWithoutSignedParam;
 exports.generateRandomParam = generateRandomParam;
 exports.getCurrentDateInSeconds = getCurrentDateInSeconds;
 exports.generateExpiredParam = generateExpiredParam;
+exports.getUrlFromRequest = getUrlFromRequest;
 
 /**
  * Create a hashed key with secretKey from the string
@@ -102,4 +104,24 @@ function getCurrentDateInSeconds() {
  */
 function generateExpiredParam(ttl) {
   return getCurrentDateInSeconds() + ttl;
+}
+
+/**
+ * Get url from request
+ *
+ * @param {Request | CustomRequestObject} req - Request.
+ * @returns {string} Url
+ */
+function getUrlFromRequest(req) {
+  const { URL_HOST_PARAM_NAME, FUNCTION_TYPE } = defaultValues;
+
+  if (typeof req.get === FUNCTION_TYPE && req.get(URL_HOST_PARAM_NAME)) {
+    return `${req.protocol}://${req.get(URL_HOST_PARAM_NAME)}${
+      req.originalUrl
+    }`;
+  }
+
+  validators.validateCustomRequestObject(req);
+
+  return `${req.protocol}://${req.host}${req.originalUrl}`;
 }
